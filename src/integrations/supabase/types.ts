@@ -21,6 +21,7 @@ export type Database = {
           created_at: string
           id: string
           project_id: string
+          prompt_record_id: string | null
           session_id: string
           turn_number: number
           user_message: string | null
@@ -31,6 +32,7 @@ export type Database = {
           created_at?: string
           id?: string
           project_id: string
+          prompt_record_id?: string | null
           session_id: string
           turn_number: number
           user_message?: string | null
@@ -41,6 +43,7 @@ export type Database = {
           created_at?: string
           id?: string
           project_id?: string
+          prompt_record_id?: string | null
           session_id?: string
           turn_number?: number
           user_message?: string | null
@@ -51,6 +54,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interview_turns_prompt_record_id_fkey"
+            columns: ["prompt_record_id"]
+            isOneToOne: false
+            referencedRelation: "prompt_records"
             referencedColumns: ["id"]
           },
         ]
