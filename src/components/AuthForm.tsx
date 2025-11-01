@@ -34,10 +34,9 @@ export const AuthForm = () => {
     } else {
       // Create default project for new user
       if (data.user) {
-        await (supabase as any).from('projects').insert({
+        await supabase.from('projects').insert({
           name: 'My First Project',
           user_id: data.user.id,
-          owner_email: email,
         });
       }
 
