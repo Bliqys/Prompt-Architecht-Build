@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Send, Sparkles, CheckCircle2 } from "lucide-react";
+import { Loader2, Send, Sparkles, CheckCircle2, AlertCircle } from "lucide-react";
+import { z } from "zod";
 
 interface InterviewWizardProps {
   userId: string;
@@ -15,15 +16,48 @@ interface InterviewWizardProps {
 
 const REQUIRED_FIELDS = ["Goal", "Audience", "Inputs", "Output_Format", "Constraints"];
 
+const fieldValidation = z.object({
+  Goal: z.string().min(10, "Goal must be at least 10 characters").max(500, "Goal must be less than 500 characters"),
+  Audience: z.string().min(3, "Audience must be at least 3 characters").max(200, "Audience must be less than 200 characters"),
+  Inputs: z.string().min(5, "Inputs must be at least 5 characters").max(2000, "Inputs must be less than 2000 characters"),
+  Output_Format: z.string().min(2, "Output format required").max(50, "Format must be less than 50 characters"),
+  Constraints: z.string().min(5, "Constraints must be at least 5 characters").max(2000, "Constraints must be less than 2000 characters"),
+});
+
 export const InterviewWizard = ({ userId }: InterviewWizardProps) => {
   const [sessionId] = useState(() => crypto.randomUUID());
   const [projectId, setProjectId] = useState<string>("");
   const [userMessage, setUserMessage] = useState("");
   const [conversation, setConversation] = useState<Array<{ role: string; content: string }>>([]);
   const [collected, setCollected] = useState<Record<string, string>>({});
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [readyToGenerate, setReadyToGenerate] = useState(false);
   const { toast } = useToast();
+
+  // Restore state from sessionStorage on mount
+  useEffect(() => {
+    const savedCollected = sessionStorage.getItem('promptArchitect_collected');
+    const savedConversation = sessionStorage.getItem('promptArchitect_conversation');
+    const savedMessage = sessionStorage.getItem('promptArchitect_message');
+    
+    if (savedCollected) setCollected(JSON.parse(savedCollected));
+    if (savedConversation) setConversation(JSON.parse(savedConversation));
+    if (savedMessage) setUserMessage(savedMessage);
+  }, []);
+
+  // Persist state to sessionStorage whenever it changes
+  useEffect(() => {
+    sessionStorage.setItem('promptArchitect_collected', JSON.stringify(collected));
+  }, [collected]);
+
+  useEffect(() => {
+    sessionStorage.setItem('promptArchitect_conversation', JSON.stringify(conversation));
+  }, [conversation]);
+
+  useEffect(() => {
+    sessionStorage.setItem('promptArchitect_message', userMessage);
+  }, [userMessage]);
 
   useEffect(() => {
     const initProject = async () => {
@@ -126,6 +160,28 @@ export const InterviewWizard = ({ userId }: InterviewWizardProps) => {
       return;
     }
 
+    // Validate all fields before generation
+    const errors: Record<string, string> = {};
+    REQUIRED_FIELDS.forEach(field => {
+      try {
+        fieldValidation.shape[field as keyof typeof fieldValidation.shape].parse(collected[field] || "");
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          errors[field] = error.issues[0].message;
+        }
+      }
+    });
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      toast({
+        title: "Validation errors",
+        description: "Please fix the highlighted fields before generating",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -149,6 +205,11 @@ export const InterviewWizard = ({ userId }: InterviewWizardProps) => {
       });
 
       window.dispatchEvent(new CustomEvent('promptGenerated'));
+      
+      // Clear session storage after successful generation
+      sessionStorage.removeItem('promptArchitect_collected');
+      sessionStorage.removeItem('promptArchitect_conversation');
+      sessionStorage.removeItem('promptArchitect_message');
     } catch (error: any) {
       console.error('Generation error:', error);
       toast({
@@ -163,6 +224,13 @@ export const InterviewWizard = ({ userId }: InterviewWizardProps) => {
 
   const handleFieldUpdate = (field: string, value: string) => {
     setCollected(prev => ({ ...prev, [field]: value }));
+    
+    // Clear validation error for this field
+    setValidationErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
   };
 
   return (
@@ -170,8 +238,40 @@ export const InterviewWizard = ({ userId }: InterviewWizardProps) => {
       {/* Progress Indicator */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-muted-foreground">Requirements</span>
-          <span className="text-sm font-semibold">{completionPercentage}%</span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-muted-foreground">Requirements</span>
+            {collected && Object.keys(collected).length > 0 && (
+              <Badge variant="outline" className="text-xs">
+                Auto-saved
+              </Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-semibold">{completionPercentage}%</span>
+            {Object.keys(collected).length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  if (window.confirm('Clear all form data? This cannot be undone.')) {
+                    setCollected({});
+                    setConversation([]);
+                    setUserMessage("");
+                    sessionStorage.removeItem('promptArchitect_collected');
+                    sessionStorage.removeItem('promptArchitect_conversation');
+                    sessionStorage.removeItem('promptArchitect_message');
+                    toast({
+                      title: "Form cleared",
+                      description: "All data has been reset",
+                    });
+                  }
+                }}
+                className="h-8 text-xs"
+              >
+                Clear Form
+              </Button>
+            )}
+          </div>
         </div>
         <Progress value={completionPercentage} className="h-2.5" />
         <div className="flex flex-wrap gap-2">
@@ -213,56 +313,121 @@ export const InterviewWizard = ({ userId }: InterviewWizardProps) => {
       {/* Field Inputs */}
       <div className="grid gap-6">
         <div className="space-y-3">
-          <Label htmlFor="goal" className="text-sm font-medium">Goal *</Label>
+          <Label htmlFor="goal" className="text-sm font-medium">
+            Goal * 
+            <span className="text-xs text-muted-foreground ml-2 font-normal">
+              What do you want to achieve?
+            </span>
+          </Label>
           <Input
             id="goal"
-            placeholder="What do you want to achieve?"
+            placeholder="Generate product descriptions for our e-commerce site"
             value={collected.Goal || ""}
             onChange={(e) => handleFieldUpdate('Goal', e.target.value)}
-            className="h-11"
+            className={`h-11 ${validationErrors.Goal ? 'border-destructive' : ''}`}
+            maxLength={500}
           />
+          {validationErrors.Goal && (
+            <div className="flex items-center gap-2 text-destructive text-xs">
+              <AlertCircle className="w-3 h-3" />
+              {validationErrors.Goal}
+            </div>
+          )}
+          {collected.Goal && !validationErrors.Goal && (
+            <p className="text-xs text-muted-foreground">
+              {collected.Goal.length}/500 characters
+            </p>
+          )}
         </div>
         <div className="space-y-3">
-          <Label htmlFor="audience" className="text-sm font-medium">Audience *</Label>
+          <Label htmlFor="audience" className="text-sm font-medium">
+            Audience *
+            <span className="text-xs text-muted-foreground ml-2 font-normal">
+              Who will use this? Which channel?
+            </span>
+          </Label>
           <Input
             id="audience"
-            placeholder="Who is this for? Which channel?"
+            placeholder="Marketing team, web content"
             value={collected.Audience || ""}
             onChange={(e) => handleFieldUpdate('Audience', e.target.value)}
-            className="h-11"
+            className={`h-11 ${validationErrors.Audience ? 'border-destructive' : ''}`}
+            maxLength={200}
           />
+          {validationErrors.Audience && (
+            <div className="flex items-center gap-2 text-destructive text-xs">
+              <AlertCircle className="w-3 h-3" />
+              {validationErrors.Audience}
+            </div>
+          )}
         </div>
         <div className="space-y-3">
-          <Label htmlFor="inputs" className="text-sm font-medium">Inputs *</Label>
+          <Label htmlFor="inputs" className="text-sm font-medium">
+            Inputs *
+            <span className="text-xs text-muted-foreground ml-2 font-normal">
+              What data will be provided?
+            </span>
+          </Label>
           <Textarea
             id="inputs"
-            placeholder="What data/information will be provided?"
+            placeholder="Product specs, features, target demographics"
             value={collected.Inputs || ""}
             onChange={(e) => handleFieldUpdate('Inputs', e.target.value)}
             rows={3}
-            className="resize-none"
+            className={`resize-none ${validationErrors.Inputs ? 'border-destructive' : ''}`}
+            maxLength={2000}
           />
+          {validationErrors.Inputs && (
+            <div className="flex items-center gap-2 text-destructive text-xs">
+              <AlertCircle className="w-3 h-3" />
+              {validationErrors.Inputs}
+            </div>
+          )}
         </div>
         <div className="space-y-3">
-          <Label htmlFor="format" className="text-sm font-medium">Output Format *</Label>
+          <Label htmlFor="format" className="text-sm font-medium">
+            Output Format *
+            <span className="text-xs text-muted-foreground ml-2 font-normal">
+              JSON, Markdown, plain text, etc.
+            </span>
+          </Label>
           <Input
             id="format"
-            placeholder="e.g., JSON, Markdown, plain text"
+            placeholder="JSON"
             value={collected.Output_Format || ""}
             onChange={(e) => handleFieldUpdate('Output_Format', e.target.value)}
-            className="h-11"
+            className={`h-11 ${validationErrors.Output_Format ? 'border-destructive' : ''}`}
+            maxLength={50}
           />
+          {validationErrors.Output_Format && (
+            <div className="flex items-center gap-2 text-destructive text-xs">
+              <AlertCircle className="w-3 h-3" />
+              {validationErrors.Output_Format}
+            </div>
+          )}
         </div>
         <div className="space-y-3">
-          <Label htmlFor="constraints" className="text-sm font-medium">Constraints *</Label>
+          <Label htmlFor="constraints" className="text-sm font-medium">
+            Constraints *
+            <span className="text-xs text-muted-foreground ml-2 font-normal">
+              Length limits, tone, safety requirements
+            </span>
+          </Label>
           <Textarea
             id="constraints"
-            placeholder="Length limits, tone, safety requirements, etc."
+            placeholder="Max 150 words, professional tone, avoid technical jargon"
             value={collected.Constraints || ""}
             onChange={(e) => handleFieldUpdate('Constraints', e.target.value)}
             rows={3}
-            className="resize-none"
+            className={`resize-none ${validationErrors.Constraints ? 'border-destructive' : ''}`}
+            maxLength={2000}
           />
+          {validationErrors.Constraints && (
+            <div className="flex items-center gap-2 text-destructive text-xs">
+              <AlertCircle className="w-3 h-3" />
+              {validationErrors.Constraints}
+            </div>
+          )}
         </div>
       </div>
 
