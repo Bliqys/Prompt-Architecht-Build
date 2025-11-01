@@ -163,7 +163,7 @@ serve(async (req) => {
     );
 
     const requestData = await req.json();
-    const { action, session_id, project_id, user_message, collected = {} } = requestData;
+    const { action, session_id, project_id, user_message, collected = {}, conversation_id } = requestData;
 
     // Get user
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
@@ -193,8 +193,9 @@ serve(async (req) => {
       
       case 'generate':
         if (!project_id) throw new Error('project_id is required for generate action');
+        const validated_conversation_id = conversation_id !== undefined ? validateUUID(conversation_id, 'conversation_id') : undefined;
         await verifyProjectOwnership(supabaseClient, project_id, user.id);
-        return await handleGenerate(supabaseClient, user.id, session_id, project_id, user_message, validatedCollected);
+        return await handleGenerate(supabaseClient, user.id, session_id, project_id, user_message, validatedCollected, validated_conversation_id);
       
       case 'get_history':
         if (!project_id) throw new Error('project_id is required for get_history action');
@@ -296,7 +297,7 @@ async function handleInterview(supabaseClient: any, userId: string, sessionId: s
   );
 }
 
-async function handleGenerate(supabaseClient: any, userId: string, sessionId: string, projectId: string, userMessage: string, collected: any) {
+async function handleGenerate(supabaseClient: any, userId: string, sessionId: string, projectId: string, userMessage: string, collected: any, conversationId?: string) {
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
   // Step 1: RAG - Search historical prompts and KB
@@ -622,6 +623,7 @@ Extract 2-4 datasets from the knowledge base. Make them actionable and directly 
     .from('prompt_records')
     .insert({
       project_id: projectId,
+      conversation_id: conversationId || null,
       prompt_text: userMessage || 'Generated from form',
       synthesized_prompt: finalPrompt,
       metadata: {
