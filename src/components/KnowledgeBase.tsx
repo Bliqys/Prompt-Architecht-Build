@@ -17,11 +17,13 @@ export const KnowledgeBase = ({ projectId }: KnowledgeBaseProps) => {
   const [files, setFiles] = useState<File[]>([]);
   const [kbCount, setKbCount] = useState<number>(0);
   const [loadingCount, setLoadingCount] = useState(true);
+  const [kbSources, setKbSources] = useState<Array<{ source_name: string; chunk_count: number }>>([]);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Fetch current KB chunk count
+  // Fetch current KB chunk count and sources
   useEffect(() => {
-    const fetchKBCount = async () => {
+    const fetchKBData = async () => {
       try {
         const { count, error } = await supabase
           .from('kb_chunks')
@@ -30,15 +32,37 @@ export const KnowledgeBase = ({ projectId }: KnowledgeBaseProps) => {
         
         if (error) throw error;
         setKbCount(count || 0);
+
+        // Fetch unique sources with chunk counts
+        const { data: sourcesData, error: sourcesError } = await supabase
+          .from('kb_chunks')
+          .select('source_name')
+          .eq('project_id', projectId);
+
+        if (sourcesError) throw sourcesError;
+
+        // Group by source_name and count chunks
+        const sourceMap = new Map<string, number>();
+        sourcesData?.forEach((row) => {
+          const count = sourceMap.get(row.source_name) || 0;
+          sourceMap.set(row.source_name, count + 1);
+        });
+
+        const sources = Array.from(sourceMap.entries()).map(([source_name, chunk_count]) => ({
+          source_name,
+          chunk_count,
+        }));
+
+        setKbSources(sources);
       } catch (error) {
-        console.error('Error fetching KB count:', error);
+        console.error('Error fetching KB data:', error);
       } finally {
         setLoadingCount(false);
       }
     };
 
-    fetchKBCount();
-  }, [projectId, uploading]);
+    fetchKBData();
+  }, [projectId, uploading, deleting]);
 
   const chunkText = (text: string, chunkSize = 1000): string[] => {
     const chunks: string[] = [];
@@ -154,6 +178,33 @@ export const KnowledgeBase = ({ projectId }: KnowledgeBaseProps) => {
     }
   };
 
+  const handleDeleteSource = async (sourceName: string) => {
+    setDeleting(sourceName);
+    try {
+      const { error } = await supabase
+        .from('kb_chunks')
+        .delete()
+        .eq('project_id', projectId)
+        .eq('source_name', sourceName);
+
+      if (error) throw error;
+
+      toast({
+        title: "Dataset Removed",
+        description: `Successfully deleted ${sourceName} from knowledge base`,
+      });
+    } catch (error: any) {
+      console.error('Delete error:', error);
+      toast({
+        title: "Delete Failed",
+        description: error.message || "Failed to delete dataset",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(null);
+    }
+  };
+
   return (
     <Card className="p-8 glass elevated animate-slide-up">
       <div className="space-y-6">
@@ -250,6 +301,39 @@ export const KnowledgeBase = ({ projectId }: KnowledgeBaseProps) => {
                   </>
                 )}
               </Button>
+            </div>
+          )}
+
+          {kbSources.length > 0 && (
+            <div className="space-y-3 pt-6 border-t border-border">
+              <p className="text-sm font-medium">Existing Datasets</p>
+              <div className="space-y-2">
+                {kbSources.map((source) => (
+                  <div
+                    key={source.source_name}
+                    className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg group hover:bg-muted/50 transition-colors"
+                  >
+                    <FileText className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm flex-1 truncate">{source.source_name}</span>
+                    <Badge variant="secondary" className="text-xs">
+                      {source.chunk_count} chunks
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteSource(source.source_name)}
+                      disabled={deleting === source.source_name}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      {deleting === source.source_name ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
