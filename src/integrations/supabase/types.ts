@@ -204,7 +204,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      match_kb_chunks: {
+        Args: {
+          filter_project_id: string
+          match_count: number
+          match_threshold: number
+          query_embedding: string
+        }
+        Returns: {
+          id: string
+          metadata: Json
+          similarity: number
+          source_name: string
+          text: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
