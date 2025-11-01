@@ -5,7 +5,19 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
+
+// Helper for consistent JSON responses with CORS
+function jsonResponse(payload: unknown, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: {
+      ...corsHeaders,
+      'Content-Type': 'application/json',
+    },
+  });
+}
 
 // === R4P CONFIGURATION ===
 const R4P_CONFIG = {
@@ -153,41 +165,46 @@ async function verifyConversationOwnership(supabaseClient: any, conversationId: 
 
 // === MAIN HANDLER ===
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
-    const requestData = await req.json();
-    const { action, session_id, project_id, user_message, collected = {}, conversation_id } = requestData;
-
-    // Extract user ID from JWT token
+    // Extract and validate Authorization header
     const authHeader = req.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new Error('Missing or invalid Authorization header');
+      console.error('Missing or invalid Authorization header');
+      return jsonResponse({ error: 'ACCESS_DENIED', detail: 'Missing Authorization header' }, 401);
     }
 
     const token = authHeader.replace('Bearer ', '');
     let userId: string;
     
     try {
-      // Decode JWT to get user ID (payload is the middle part)
+      // Decode JWT to get user ID (Supabase already validated it with verify_jwt=true)
       const payload = JSON.parse(atob(token.split('.')[1]));
       userId = payload.sub;
       
       if (!userId) {
-        throw new Error('No user ID in token');
+        console.error('No user ID in token payload');
+        return jsonResponse({ error: 'INVALID_TOKEN', detail: 'No user ID in token' }, 401);
       }
       
       console.log('Authenticated user:', userId);
     } catch (e) {
       console.error('Failed to parse JWT:', e);
-      throw new Error('Invalid token format');
+      return jsonResponse({ error: 'INVALID_TOKEN', detail: 'Invalid token format' }, 401);
     }
 
-    // Create service role client for database operations
+    // Create service role client for database operations (trusted, bypasses RLS)
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
+
+    const requestData = await req.json().catch(() => ({}));
+    const { action, session_id, project_id, user_message, collected = {}, conversation_id } = requestData;
 
     const validatedCollected = validateCollected(collected);
 
@@ -208,24 +225,30 @@ serve(async (req) => {
     }
   } catch (error) {
     console.error('Error in prompt-architect:', error);
-    let userMessage = 'An error occurred';
+    let errorCode = 'INTERNAL_ERROR';
     let statusCode = 500;
+    let detail = 'An error occurred';
+    
     if (error instanceof Error) {
+      detail = error.message;
+      
       if (error.message.includes('Unauthorized') || error.message.includes('access denied')) {
-        userMessage = 'Access denied';
-        statusCode = 403;
+        errorCode = 'UNAUTHORIZED';
+        statusCode = 401;
       } else if (error.message.includes('not found')) {
-        userMessage = 'Resource not found';
+        errorCode = 'NOT_FOUND';
         statusCode = 404;
       } else if (error.message.includes('must be') || error.message.includes('exceeds') || error.message.includes('required')) {
-        userMessage = error.message;
+        errorCode = 'VALIDATION_ERROR';
         statusCode = 400;
       }
     }
-    return new Response(
-      JSON.stringify({ error: userMessage }),
-      { status: statusCode, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    
+    return jsonResponse({ 
+      error: errorCode, 
+      detail,
+      timestamp: new Date().toISOString()
+    }, statusCode);
   }
 });
 
@@ -287,16 +310,10 @@ async function handleInterview(supabaseClient: any, userId: string, sessionId: s
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        return jsonResponse({ error: 'RATE_LIMIT', detail: 'Rate limit exceeded. Please try again in a moment.' }, 429);
       }
       if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: 'Payment required. Please add credits to your Lovable workspace.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        return jsonResponse({ error: 'PAYMENT_REQUIRED', detail: 'Payment required. Please add credits to your Lovable workspace.' }, 402);
       }
       throw new Error('AI gateway error');
     }
@@ -310,26 +327,20 @@ async function handleInterview(supabaseClient: any, userId: string, sessionId: s
       content: questions
     });
 
-    return new Response(
-      JSON.stringify({ 
-        type: 'questions',
-        questions,
-        missing,
-        collected,
-        progress: `${REQUIRED_FIELDS.length - missing.length}/${REQUIRED_FIELDS.length} fields collected`
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return jsonResponse({ 
+      type: 'questions',
+      questions,
+      missing,
+      collected,
+      progress: `${REQUIRED_FIELDS.length - missing.length}/${REQUIRED_FIELDS.length} fields collected`
+    });
   }
 
-  return new Response(
-    JSON.stringify({ 
-      type: 'ready',
-      message: 'All required fields collected. Ready to generate enterprise-grade metaprompt!',
-      collected 
-    }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
+  return jsonResponse({ 
+    type: 'ready',
+    message: 'All required fields collected. Ready to generate enterprise-grade metaprompt!',
+    collected 
+  });
 }
 
 // === GENERATE HANDLER (R4P PIPELINE) ===
@@ -495,16 +506,10 @@ GENERATE: Complete JSON per system schema. Include 4 datasets (faq_patterns, con
 
   if (!synthesisResponse.ok) {
     if (synthesisResponse.status === 429) {
-      return new Response(
-        JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }),
-        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return jsonResponse({ error: 'RATE_LIMIT', detail: 'Rate limit exceeded. Please try again in a moment.' }, 429);
     }
     if (synthesisResponse.status === 402) {
-      return new Response(
-        JSON.stringify({ error: 'Payment required. Please add credits to your Lovable workspace.' }),
-        { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return jsonResponse({ error: 'PAYMENT_REQUIRED', detail: 'Payment required. Please add credits to your Lovable workspace.' }, 402);
     }
     throw new Error('Synthesis failed');
   }
@@ -716,25 +721,22 @@ GENERATE: Complete JSON per system schema. Include 4 datasets (faq_patterns, con
   console.log('[R4P] Generation complete, prompt ID:', promptRecord?.id);
 
   // === STEP 9: RETURN ===
-  return new Response(
-    JSON.stringify({
-      type: 'generated',
-      metaprompt: finalResult.metaprompt,
-      datasets: finalResult.datasets,
-      compliance: finalResult.compliance,
-      citations: finalResult.citations,
-      scores: finalScores,
-      confidence: finalResult.confidence || finalScores.confidence,
-      latency_metrics: latencyMetrics,
-      id: promptRecord?.id,
-      collected,
-      references: {
-        kb_chunks: hybridResults.length,
-        historical_prompts: historicalPrompts?.length || 0
-      }
-    }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
+  return jsonResponse({
+    type: 'generated',
+    metaprompt: finalResult.metaprompt,
+    datasets: finalResult.datasets,
+    compliance: finalResult.compliance,
+    citations: finalResult.citations,
+    scores: finalScores,
+    confidence: finalResult.confidence || finalScores.confidence,
+    latency_metrics: latencyMetrics,
+    id: promptRecord?.id,
+    collected,
+    references: {
+      kb_chunks: hybridResults.length,
+      historical_prompts: historicalPrompts?.length || 0
+    }
+  });
 }
 
 // === HISTORY HANDLER ===
@@ -748,8 +750,5 @@ async function handleGetHistory(supabaseClient: any, projectId: string) {
 
   if (error) throw error;
 
-  return new Response(
-    JSON.stringify({ prompts }),
-    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-  );
+  return jsonResponse({ prompts });
 }
