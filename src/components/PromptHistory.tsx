@@ -70,6 +70,12 @@ export const PromptHistory = ({ userId }: PromptHistoryProps) => {
     
     localStorage.setItem('latestPrompt', JSON.stringify(promptData));
     window.dispatchEvent(new CustomEvent('promptGenerated'));
+    
+    // Switch to Result tab
+    const resultTab = document.querySelector('[value="result"]') as HTMLElement;
+    if (resultTab) {
+      resultTab.click();
+    }
   };
 
   if (loading) {
