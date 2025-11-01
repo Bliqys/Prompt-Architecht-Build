@@ -26,9 +26,8 @@ export const InterviewWizard = ({ userId }: InterviewWizardProps) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Get or create default project
     const initProject = async () => {
-      const { data: projects } = await (supabase as any)
+      const { data: projects } = await supabase
         .from('projects')
         .select('id')
         .eq('user_id', userId)
@@ -37,7 +36,7 @@ export const InterviewWizard = ({ userId }: InterviewWizardProps) => {
       if (projects && projects.length > 0) {
         setProjectId(projects[0].id);
       } else {
-        const { data: newProject } = await (supabase as any)
+        const { data: newProject } = await supabase
           .from('projects')
           .insert({ name: 'My First Project', user_id: userId })
           .select('id')
@@ -63,10 +62,8 @@ export const InterviewWizard = ({ userId }: InterviewWizardProps) => {
     const userMsg = userMessage;
     setUserMessage("");
 
-    // Add user message to conversation
     setConversation(prev => [...prev, { role: 'user', content: userMsg }]);
 
-    // Try to extract fields from user message
     const newCollected = { ...collected };
     const lowerMsg = userMsg.toLowerCase();
     
@@ -144,7 +141,6 @@ export const InterviewWizard = ({ userId }: InterviewWizardProps) => {
 
       if (error) throw error;
 
-      // Store result in localStorage for display component
       localStorage.setItem('latestPrompt', JSON.stringify(data));
 
       toast({
@@ -152,7 +148,6 @@ export const InterviewWizard = ({ userId }: InterviewWizardProps) => {
         description: "Your prompt has been generated. Check the Result tab.",
       });
 
-      // Dispatch custom event to notify PromptDisplay
       window.dispatchEvent(new CustomEvent('promptGenerated'));
     } catch (error: any) {
       console.error('Generation error:', error);
@@ -171,22 +166,22 @@ export const InterviewWizard = ({ userId }: InterviewWizardProps) => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Progress Bar */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Requirements Collected</span>
-          <span className="font-medium">{completionPercentage}%</span>
+    <div className="space-y-8">
+      {/* Progress Indicator */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-muted-foreground">Requirements</span>
+          <span className="text-sm font-semibold">{completionPercentage}%</span>
         </div>
-        <Progress value={completionPercentage} className="h-2" />
+        <Progress value={completionPercentage} className="h-2.5" />
         <div className="flex flex-wrap gap-2">
           {REQUIRED_FIELDS.map(field => (
             <Badge 
               key={field} 
               variant={collected[field] ? "default" : "outline"}
-              className="text-xs"
+              className="text-xs font-medium px-3 py-1"
             >
-              {collected[field] ? <CheckCircle2 className="w-3 h-3 mr-1" /> : null}
+              {collected[field] && <CheckCircle2 className="w-3 h-3 mr-1.5" />}
               {field.replace('_', ' ')}
             </Badge>
           ))}
@@ -195,81 +190,86 @@ export const InterviewWizard = ({ userId }: InterviewWizardProps) => {
 
       {/* Conversation */}
       {conversation.length > 0 && (
-        <div className="space-y-3 max-h-96 overflow-y-auto p-4 bg-muted/30 rounded-lg border">
+        <div className="space-y-4 max-h-96 overflow-y-auto p-6 bg-muted/30 rounded-xl border border-border/50">
           {conversation.map((msg, i) => (
             <div
               key={i}
-              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
             >
               <div
-                className={`max-w-[80%] p-3 rounded-lg ${
+                className={`max-w-[85%] p-4 rounded-2xl ${
                   msg.role === 'user'
                     ? 'bg-primary text-primary-foreground'
-                    : 'bg-card border'
+                    : 'bg-card border border-border/50 shadow-sm'
                 }`}
               >
-                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Manual Field Entry */}
-      <div className="grid gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="goal">Goal (Required)</Label>
+      {/* Field Inputs */}
+      <div className="grid gap-6">
+        <div className="space-y-3">
+          <Label htmlFor="goal" className="text-sm font-medium">Goal *</Label>
           <Input
             id="goal"
             placeholder="What do you want to achieve?"
             value={collected.Goal || ""}
             onChange={(e) => handleFieldUpdate('Goal', e.target.value)}
+            className="h-11"
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="audience">Audience (Required)</Label>
+        <div className="space-y-3">
+          <Label htmlFor="audience" className="text-sm font-medium">Audience *</Label>
           <Input
             id="audience"
             placeholder="Who is this for? Which channel?"
             value={collected.Audience || ""}
             onChange={(e) => handleFieldUpdate('Audience', e.target.value)}
+            className="h-11"
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="inputs">Inputs (Required)</Label>
+        <div className="space-y-3">
+          <Label htmlFor="inputs" className="text-sm font-medium">Inputs *</Label>
           <Textarea
             id="inputs"
             placeholder="What data/information will be provided?"
             value={collected.Inputs || ""}
             onChange={(e) => handleFieldUpdate('Inputs', e.target.value)}
             rows={3}
+            className="resize-none"
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="format">Output Format (Required)</Label>
+        <div className="space-y-3">
+          <Label htmlFor="format" className="text-sm font-medium">Output Format *</Label>
           <Input
             id="format"
             placeholder="e.g., JSON, Markdown, plain text"
             value={collected.Output_Format || ""}
             onChange={(e) => handleFieldUpdate('Output_Format', e.target.value)}
+            className="h-11"
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="constraints">Constraints (Required)</Label>
+        <div className="space-y-3">
+          <Label htmlFor="constraints" className="text-sm font-medium">Constraints *</Label>
           <Textarea
             id="constraints"
             placeholder="Length limits, tone, safety requirements, etc."
             value={collected.Constraints || ""}
             onChange={(e) => handleFieldUpdate('Constraints', e.target.value)}
             rows={3}
+            className="resize-none"
           />
         </div>
       </div>
 
       {/* Chat Input */}
-      <div className="flex gap-2">
+      <div className="flex gap-3">
         <Textarea
-          placeholder="Ask me anything or describe what you need..."
+          placeholder="Describe your prompt needs or ask a question..."
           value={userMessage}
           onChange={(e) => setUserMessage(e.target.value)}
           onKeyDown={(e) => {
@@ -280,18 +280,18 @@ export const InterviewWizard = ({ userId }: InterviewWizardProps) => {
           }}
           rows={3}
           disabled={loading}
-          className="flex-1"
+          className="flex-1 resize-none"
         />
         <Button
           onClick={handleInterview}
           disabled={loading || !userMessage.trim()}
           size="icon"
-          className="h-auto"
+          className="h-auto w-12 shrink-0"
         >
           {loading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <Loader2 className="w-5 h-5 animate-spin" />
           ) : (
-            <Send className="w-4 h-4" />
+            <Send className="w-5 h-5" />
           )}
         </Button>
       </div>
@@ -301,18 +301,18 @@ export const InterviewWizard = ({ userId }: InterviewWizardProps) => {
         <Button
           onClick={handleGenerate}
           disabled={loading}
-          className="w-full"
+          className="w-full h-14 text-base font-medium"
           size="lg"
         >
           {loading ? (
             <>
               <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-              Generating your prompt...
+              Generating...
             </>
           ) : (
             <>
               <Sparkles className="w-5 h-5 mr-2" />
-              Generate Enterprise-Grade Prompt
+              Generate Enterprise Prompt
             </>
           )}
         </Button>

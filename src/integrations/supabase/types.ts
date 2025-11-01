@@ -57,28 +57,34 @@ export type Database = {
       }
       kb_chunks: {
         Row: {
-          content: string
+          chunk_index: number | null
           created_at: string
           embedding: string | null
           id: string
           metadata: Json | null
           project_id: string
+          source_name: string | null
+          text: string
         }
         Insert: {
-          content: string
+          chunk_index?: number | null
           created_at?: string
           embedding?: string | null
           id?: string
           metadata?: Json | null
           project_id: string
+          source_name?: string | null
+          text?: string
         }
         Update: {
-          content?: string
+          chunk_index?: number | null
           created_at?: string
           embedding?: string | null
           id?: string
           metadata?: Json | null
           project_id?: string
+          source_name?: string | null
+          text?: string
         }
         Relationships: [
           {
@@ -149,27 +155,39 @@ export type Database = {
       prompt_records: {
         Row: {
           created_at: string
+          features: Json | null
           id: string
           metadata: Json | null
           project_id: string
           prompt_text: string
           scores: Json | null
+          synthesized_prompt: string | null
+          total_score: number | null
+          win_rate: number | null
         }
         Insert: {
           created_at?: string
+          features?: Json | null
           id?: string
           metadata?: Json | null
           project_id: string
           prompt_text: string
           scores?: Json | null
+          synthesized_prompt?: string | null
+          total_score?: number | null
+          win_rate?: number | null
         }
         Update: {
           created_at?: string
+          features?: Json | null
           id?: string
           metadata?: Json | null
           project_id?: string
           prompt_text?: string
           scores?: Json | null
+          synthesized_prompt?: string | null
+          total_score?: number | null
+          win_rate?: number | null
         }
         Relationships: [
           {
