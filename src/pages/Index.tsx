@@ -170,6 +170,53 @@ const Index = () => {
           </div>
         </aside>
       </div>
+
+      {/* Footer */}
+      <footer className="border-t border-border/50 bg-background/80 backdrop-blur-sm shrink-0">
+        <div className="container mx-auto px-4 lg:px-6 py-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
+            <div className="flex items-center gap-4">
+              <a 
+                href="https://github.com/YOUR_USERNAME/prompt-architect" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="hover:text-foreground transition-colors"
+              >
+                GitHub
+              </a>
+              <a 
+                href="https://github.com/YOUR_USERNAME/prompt-architect/blob/main/USAGE_GUIDE.md" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="hover:text-foreground transition-colors"
+              >
+                Usage Guide
+              </a>
+              <a 
+                href="https://github.com/YOUR_USERNAME/prompt-architect/blob/main/DEPLOYMENT_GUIDE.md" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="hover:text-foreground transition-colors"
+              >
+                Deploy Guide
+              </a>
+              <a 
+                href="https://github.com/YOUR_USERNAME/prompt-architect/blob/main/CONTRIBUTING.md" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="hover:text-foreground transition-colors"
+              >
+                Contributing
+              </a>
+            </div>
+            <div className="flex items-center gap-1">
+              <span>Built with</span>
+              <Sparkles className="w-3 h-3 text-primary" />
+              <span>by the open source community</span>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
