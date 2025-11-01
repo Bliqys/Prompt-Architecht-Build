@@ -457,6 +457,98 @@ export const ConversationView = ({ conversationId, userId, projectId, onConversa
                   </div>
                 )}
               </div>
+
+              <div className="space-y-3">
+                <Label htmlFor="style">Style * <span className="text-xs text-muted-foreground font-normal ml-2">Tone and writing style</span></Label>
+                <Input
+                  id="style"
+                  placeholder="Professional, conversational, technical"
+                  value={collected.Style || ""}
+                  onChange={(e) => handleFieldUpdate('Style', e.target.value)}
+                  className={validationErrors.Style ? 'border-destructive' : ''}
+                  maxLength={500}
+                />
+                {validationErrors.Style && (
+                  <div className="flex items-center gap-2 text-destructive text-xs">
+                    <AlertCircle className="w-3 h-3" />
+                    {validationErrors.Style}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <Label htmlFor="guardrails">Guardrails * <span className="text-xs text-muted-foreground font-normal ml-2">Safety and refusal rules</span></Label>
+                <Textarea
+                  id="guardrails"
+                  placeholder="Refuse legal/medical advice, escalate threats, no PII collection"
+                  value={collected.Guardrails || ""}
+                  onChange={(e) => handleFieldUpdate('Guardrails', e.target.value)}
+                  rows={3}
+                  className={validationErrors.Guardrails ? 'border-destructive' : ''}
+                  maxLength={500}
+                />
+                {validationErrors.Guardrails && (
+                  <div className="flex items-center gap-2 text-destructive text-xs">
+                    <AlertCircle className="w-3 h-3" />
+                    {validationErrors.Guardrails}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <Label htmlFor="business_context">Business Context * <span className="text-xs text-muted-foreground font-normal ml-2">Purpose, channels, locales</span></Label>
+                <Textarea
+                  id="business_context"
+                  placeholder="Voice AI for lead capture, deployed on web chat and phone, US market"
+                  value={collected.Business_Context || ""}
+                  onChange={(e) => handleFieldUpdate('Business_Context', e.target.value)}
+                  rows={3}
+                  className={validationErrors.Business_Context ? 'border-destructive' : ''}
+                  maxLength={1000}
+                />
+                {validationErrors.Business_Context && (
+                  <div className="flex items-center gap-2 text-destructive text-xs">
+                    <AlertCircle className="w-3 h-3" />
+                    {validationErrors.Business_Context}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <Label htmlFor="brand_voice">Brand Voice * <span className="text-xs text-muted-foreground font-normal ml-2">5 tone adjectives, pacing</span></Label>
+                <Input
+                  id="brand_voice"
+                  placeholder="Calm, helpful, precise, empathetic, professional"
+                  value={collected.Brand_Voice || ""}
+                  onChange={(e) => handleFieldUpdate('Brand_Voice', e.target.value)}
+                  className={validationErrors.Brand_Voice ? 'border-destructive' : ''}
+                  maxLength={500}
+                />
+                {validationErrors.Brand_Voice && (
+                  <div className="flex items-center gap-2 text-destructive text-xs">
+                    <AlertCircle className="w-3 h-3" />
+                    {validationErrors.Brand_Voice}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <Label htmlFor="success_metrics">Success Metrics * <span className="text-xs text-muted-foreground font-normal ml-2">How to measure success</span></Label>
+                <Input
+                  id="success_metrics"
+                  placeholder="CSAT >4.5, conversion rate >15%, AHT <3min"
+                  value={collected.Success_Metrics || ""}
+                  onChange={(e) => handleFieldUpdate('Success_Metrics', e.target.value)}
+                  className={validationErrors.Success_Metrics ? 'border-destructive' : ''}
+                  maxLength={500}
+                />
+                {validationErrors.Success_Metrics && (
+                  <div className="flex items-center gap-2 text-destructive text-xs">
+                    <AlertCircle className="w-3 h-3" />
+                    {validationErrors.Success_Metrics}
+                  </div>
+                )}
+              </div>
             </div>
 
             <Button
@@ -485,64 +577,201 @@ export const ConversationView = ({ conversationId, userId, projectId, onConversa
                         <p className="text-sm">{msg.content}</p>
                       </div>
 
-                      {/* Scores */}
+                      {/* R4P Scores */}
                       {msg.promptData.scores && (
                         <Card className="glass elevated-sm border-border/50">
                           <CardHeader>
                             <CardTitle className="text-lg font-semibold flex items-center gap-2">
                               <Award className="w-5 h-5 text-primary" />
-                              Quality Assessment
+                              R4P Quality Assessment
                             </CardTitle>
                           </CardHeader>
                           <CardContent className="space-y-4">
                             <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
-                              <span className="text-sm font-medium">Overall Score</span>
+                              <span className="text-sm font-medium">Composite Score</span>
                               <span className="text-2xl font-bold text-primary">
-                                {Math.round((msg.promptData.scores.total || 0) * 100)}%
+                                {Math.round((msg.promptData.scores.composite || msg.promptData.scores.total || 0) * 100)}%
                               </span>
                             </div>
                             <div className="grid grid-cols-2 gap-3">
-                              {Object.entries(msg.promptData.scores).filter(([key]) => key !== 'total').map(([key, value]) => (
-                                <div key={key} className="flex flex-col gap-2 p-3 bg-muted/30 rounded-lg">
-                                  <span className="text-xs font-medium text-muted-foreground">
-                                    {key.replace(/_/g, ' ')}
-                                  </span>
-                                  <Badge variant="default" className="text-xs w-fit">
-                                    {Math.round((value as number) * 100)}%
-                                  </Badge>
-                                </div>
-                              ))}
+                              {Object.entries(msg.promptData.scores)
+                                .filter(([key]) => !['total', 'composite', 'confidence'].includes(key))
+                                .map(([key, value]) => (
+                                  <div key={key} className="flex flex-col gap-2 p-3 bg-muted/30 rounded-lg">
+                                    <span className="text-xs font-medium text-muted-foreground">
+                                      {key.replace(/_/g, ' ')}
+                                    </span>
+                                    <Badge variant="default" className="text-xs w-fit">
+                                      {Math.round((value as number) * 100)}%
+                                    </Badge>
+                                  </div>
+                                ))}
                             </div>
+                            {msg.promptData.confidence && (
+                              <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                                <span className="text-xs font-medium text-muted-foreground">Confidence</span>
+                                <Badge variant="secondary">{Math.round(msg.promptData.confidence * 100)}%</Badge>
+                              </div>
+                            )}
                           </CardContent>
                         </Card>
                       )}
 
-                      {/* Prompt */}
-                      <Card className="glass elevated-sm border-border/50">
-                        <CardHeader>
-                          <CardTitle className="text-lg font-semibold flex items-center justify-between">
-                            <span className="flex items-center gap-2">
+                      {/* Metaprompt */}
+                      {msg.promptData.metaprompt && (
+                        <Card className="glass elevated-sm border-border/50">
+                          <CardHeader>
+                            <CardTitle className="text-lg font-semibold flex items-center justify-between">
+                              <span className="flex items-center gap-2">
+                                <FileText className="w-5 h-5 text-primary" />
+                                Enterprise Metaprompt
+                              </span>
+                              <div className="flex gap-2">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={() => handleCopy(JSON.stringify(msg.promptData.metaprompt, null, 2))} 
+                                  className="gap-2"
+                                >
+                                  {copied ? <CheckCircle className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                                  {copied ? 'Copied' : 'Copy'}
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={() => handleDownload(JSON.stringify({ metaprompt: msg.promptData.metaprompt, datasets: msg.promptData.datasets, compliance: msg.promptData.compliance }, null, 2))} 
+                                  className="gap-2"
+                                >
+                                  <Download className="w-4 h-4" />
+                                  Download
+                                </Button>
+                              </div>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <pre className="text-sm leading-relaxed whitespace-pre-wrap font-mono p-6 bg-muted/30 rounded-xl border border-border/50 overflow-x-auto">
+                              {JSON.stringify(msg.promptData.metaprompt, null, 2)}
+                            </pre>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Datasets */}
+                      {msg.promptData.datasets && Object.keys(msg.promptData.datasets).length > 0 && (
+                        <Card className="glass elevated-sm border-border/50">
+                          <CardHeader>
+                            <CardTitle className="text-lg font-semibold flex items-center gap-2">
                               <FileText className="w-5 h-5 text-primary" />
-                              Generated Prompt
-                            </span>
-                            <div className="flex gap-2">
-                              <Button variant="ghost" size="sm" onClick={() => handleCopy(msg.promptData.final_prompt)} className="gap-2">
-                                {copied ? <CheckCircle className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
-                                {copied ? 'Copied' : 'Copy'}
-                              </Button>
-                              <Button variant="ghost" size="sm" onClick={() => handleDownload(msg.promptData.final_prompt)} className="gap-2">
-                                <Download className="w-4 h-4" />
-                                Download
-                              </Button>
+                              Generated Datasets ({Object.keys(msg.promptData.datasets).length})
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            {Object.entries(msg.promptData.datasets).map(([name, data]: [string, any]) => (
+                              <div key={name} className="p-4 bg-muted/30 rounded-xl border border-border/50">
+                                <h4 className="font-semibold text-sm mb-2 text-primary">{name}</h4>
+                                <pre className="text-xs leading-relaxed whitespace-pre-wrap font-mono overflow-x-auto">
+                                  {JSON.stringify(data, null, 2)}
+                                </pre>
+                              </div>
+                            ))}
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Compliance & Citations */}
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {msg.promptData.compliance && (
+                          <Card className="glass elevated-sm border-border/50">
+                            <CardHeader>
+                              <CardTitle className="text-sm font-semibold">Compliance Layer</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <pre className="text-xs leading-relaxed whitespace-pre-wrap font-mono">
+                                {JSON.stringify(msg.promptData.compliance, null, 2)}
+                              </pre>
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {msg.promptData.citations && msg.promptData.citations.length > 0 && (
+                          <Card className="glass elevated-sm border-border/50">
+                            <CardHeader>
+                              <CardTitle className="text-sm font-semibold">Citations ({msg.promptData.citations.length})</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-2">
+                              {msg.promptData.citations.slice(0, 5).map((cit: any, idx: number) => (
+                                <div key={idx} className="p-2 bg-muted/30 rounded text-xs font-mono">
+                                  <div className="font-semibold truncate">{cit.uri || cit.source}</div>
+                                  <div className="text-muted-foreground">v{cit.version} • {cit.hash}</div>
+                                </div>
+                              ))}
+                              {msg.promptData.citations.length > 5 && (
+                                <div className="text-xs text-muted-foreground text-center pt-2">
+                                  +{msg.promptData.citations.length - 5} more citations
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        )}
+                      </div>
+
+                      {/* Latency Metrics */}
+                      {msg.promptData.latency_metrics && (
+                        <Card className="glass elevated-sm border-border/50">
+                          <CardHeader>
+                            <CardTitle className="text-sm font-semibold">Performance Metrics</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="grid grid-cols-3 gap-3">
+                              {Object.entries(msg.promptData.latency_metrics)
+                                .filter(([key]) => key.endsWith('_ms'))
+                                .map(([key, value]) => (
+                                  <div key={key} className="flex flex-col gap-1 p-2 bg-muted/30 rounded">
+                                    <span className="text-xs text-muted-foreground">{key.replace('_ms', '')}</span>
+                                    <span className="text-sm font-semibold">{value as number}ms</span>
+                                  </div>
+                                ))}
                             </div>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <pre className="text-sm leading-relaxed whitespace-pre-wrap font-mono p-6 bg-muted/30 rounded-xl border border-border/50 overflow-x-auto">
-                            {msg.promptData.final_prompt}
-                          </pre>
-                        </CardContent>
-                      </Card>
+                            {msg.promptData.latency_metrics.total_ms && (
+                              <div className="mt-3 p-3 bg-primary/10 rounded-lg">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-sm font-medium">Total Latency</span>
+                                  <span className="text-lg font-bold text-primary">{msg.promptData.latency_metrics.total_ms}ms</span>
+                                </div>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Fallback for old format */}
+                      {msg.promptData.final_prompt && !msg.promptData.metaprompt && (
+                        <Card className="glass elevated-sm border-border/50">
+                          <CardHeader>
+                            <CardTitle className="text-lg font-semibold flex items-center justify-between">
+                              <span className="flex items-center gap-2">
+                                <FileText className="w-5 h-5 text-primary" />
+                                Generated Prompt
+                              </span>
+                              <div className="flex gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => handleCopy(msg.promptData.final_prompt)} className="gap-2">
+                                  {copied ? <CheckCircle className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                                  {copied ? 'Copied' : 'Copy'}
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => handleDownload(msg.promptData.final_prompt)} className="gap-2">
+                                  <Download className="w-4 h-4" />
+                                  Download
+                                </Button>
+                              </div>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <pre className="text-sm leading-relaxed whitespace-pre-wrap font-mono p-6 bg-muted/30 rounded-xl border border-border/50 overflow-x-auto">
+                              {msg.promptData.final_prompt}
+                            </pre>
+                          </CardContent>
+                        </Card>
+                      )}
                     </div>
                   ) : (
                     <div className={`max-w-[85%] p-4 rounded-2xl ${
