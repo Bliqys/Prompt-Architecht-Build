@@ -71,8 +71,8 @@ export const PromptHistory = ({ userId }: PromptHistoryProps) => {
       usage_instructions: metadata.usage_instructions || '',
     };
     
-    localStorage.setItem('latestPrompt', JSON.stringify(promptData));
-    window.dispatchEvent(new CustomEvent('promptGenerated'));
+    // Dispatch event with data directly (no localStorage)
+    window.dispatchEvent(new CustomEvent('promptGenerated', { detail: promptData }));
     
     // Switch to Result tab
     const resultTab = document.querySelector('[value="result"]') as HTMLElement;

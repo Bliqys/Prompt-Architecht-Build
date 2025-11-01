@@ -140,9 +140,16 @@ export const InterviewWizard = ({ userId }: InterviewWizardProps) => {
       }
     } catch (error: any) {
       console.error('Interview error:', error);
+      
+      // Display user-friendly error message
+      let errorMessage = "Failed to process interview. Please try again.";
+      if (error.message?.includes('rate limit') || error.error === 'RATE_LIMIT') {
+        errorMessage = "Too many requests. Please wait a moment and try again.";
+      }
+      
       toast({
         title: "Error",
-        description: error.message || "Failed to process interview",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -197,14 +204,13 @@ export const InterviewWizard = ({ userId }: InterviewWizardProps) => {
 
       if (error) throw error;
 
-      localStorage.setItem('latestPrompt', JSON.stringify(data));
+      // Dispatch event with data directly (no localStorage)
+      window.dispatchEvent(new CustomEvent('promptGenerated', { detail: data }));
 
       toast({
         title: "Success!",
         description: "Your prompt has been generated. Check the Result tab.",
       });
-
-      window.dispatchEvent(new CustomEvent('promptGenerated'));
       
       // Clear session storage after successful generation
       sessionStorage.removeItem('promptArchitect_collected');
@@ -212,9 +218,20 @@ export const InterviewWizard = ({ userId }: InterviewWizardProps) => {
       sessionStorage.removeItem('promptArchitect_message');
     } catch (error: any) {
       console.error('Generation error:', error);
+      
+      // Display user-friendly error message
+      let errorMessage = "Failed to generate prompt. Please try again.";
+      if (error.message?.includes('rate limit') || error.error === 'RATE_LIMIT') {
+        errorMessage = "Too many requests. Please wait a moment and try again.";
+      } else if (error.error === 'VALIDATION_ERROR') {
+        errorMessage = "Please check your inputs and try again.";
+      } else if (error.error === 'UNAUTHORIZED') {
+        errorMessage = "Access denied. Please sign in again.";
+      }
+      
       toast({
         title: "Error",
-        description: error.message || "Failed to generate prompt",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

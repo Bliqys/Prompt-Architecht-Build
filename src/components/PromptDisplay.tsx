@@ -11,15 +11,10 @@ export const PromptDisplay = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const stored = localStorage.getItem('latestPrompt');
-    if (stored) {
-      setPromptData(JSON.parse(stored));
-    }
-
-    const handlePromptGenerated = () => {
-      const stored = localStorage.getItem('latestPrompt');
-      if (stored) {
-        setPromptData(JSON.parse(stored));
+    // Listen for prompt generation events (no localStorage)
+    const handlePromptGenerated = (event: any) => {
+      if (event.detail) {
+        setPromptData(event.detail);
       }
     };
 

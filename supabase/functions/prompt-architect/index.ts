@@ -227,26 +227,35 @@ serve(async (req) => {
     console.error('Error in prompt-architect:', error);
     let errorCode = 'INTERNAL_ERROR';
     let statusCode = 500;
-    let detail = 'An error occurred';
+    let userMessage = 'An error occurred while processing your request';
     
     if (error instanceof Error) {
-      detail = error.message;
+      // Log full error server-side for debugging
+      console.error('Full error details:', error.message, error.stack);
       
-      if (error.message.includes('Unauthorized') || error.message.includes('access denied')) {
+      // Return sanitized user-friendly messages
+      if (error.message.includes('Unauthorized') || error.message.includes('access denied') || error.message.includes('access')) {
         errorCode = 'UNAUTHORIZED';
         statusCode = 401;
-      } else if (error.message.includes('not found')) {
+        userMessage = 'Access denied. Please check your permissions.';
+      } else if (error.message.includes('not found') || error.message.includes('Conversation')) {
         errorCode = 'NOT_FOUND';
         statusCode = 404;
-      } else if (error.message.includes('must be') || error.message.includes('exceeds') || error.message.includes('required')) {
+        userMessage = 'The requested resource was not found.';
+      } else if (error.message.includes('must be') || error.message.includes('exceeds') || error.message.includes('required') || error.message.includes('Invalid')) {
         errorCode = 'VALIDATION_ERROR';
         statusCode = 400;
+        userMessage = 'Invalid input. Please check your data and try again.';
+      } else if (error.message.includes('rate limit')) {
+        errorCode = 'RATE_LIMIT';
+        statusCode = 429;
+        userMessage = 'Too many requests. Please wait a moment and try again.';
       }
     }
     
     return jsonResponse({ 
       error: errorCode, 
-      detail,
+      message: userMessage,
       timestamp: new Date().toISOString()
     }, statusCode);
   }
