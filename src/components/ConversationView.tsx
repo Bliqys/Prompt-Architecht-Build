@@ -202,6 +202,7 @@ export const ConversationView = ({ conversationId, userId, projectId, onConversa
         },
       ]);
 
+      setShowForm(false);
       onConversationCreated(conversation.id);
 
       toast({
