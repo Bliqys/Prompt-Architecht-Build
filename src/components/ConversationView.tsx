@@ -20,10 +20,14 @@ interface Message {
   content: string;
   isPrompt?: boolean;
   promptData?: {
-    final_prompt: string;
+    metaprompt?: any;
+    datasets?: any;
+    compliance?: any;
+    citations?: any[];
     scores?: any;
-    datasets?: any[];
-    usage_instructions?: string;
+    confidence?: number;
+    latency_metrics?: any;
+    final_prompt?: string;
   };
 }
 
@@ -34,14 +38,19 @@ interface ConversationViewProps {
   onConversationCreated: (id: string) => void;
 }
 
-const REQUIRED_FIELDS = ["Goal", "Audience", "Inputs", "Output_Format", "Constraints"];
+const REQUIRED_FIELDS = ["Goal", "Audience", "Inputs", "Output_Format", "Constraints", "Style", "Guardrails", "Business_Context", "Brand_Voice", "Success_Metrics"];
 
 const fieldValidation = z.object({
-  Goal: z.string().min(10, "Goal must be at least 10 characters").max(500, "Goal must be less than 500 characters"),
-  Audience: z.string().min(3, "Audience must be at least 3 characters").max(200, "Audience must be less than 200 characters"),
-  Inputs: z.string().min(5, "Inputs must be at least 5 characters").max(2000, "Inputs must be less than 2000 characters"),
-  Output_Format: z.string().min(2, "Output format required").max(50, "Format must be less than 50 characters"),
-  Constraints: z.string().min(5, "Constraints must be at least 5 characters").max(2000, "Constraints must be less than 2000 characters"),
+  Goal: z.string().min(10).max(500),
+  Audience: z.string().min(3).max(200),
+  Inputs: z.string().min(5).max(2000),
+  Output_Format: z.string().min(2).max(50),
+  Constraints: z.string().min(5).max(2000),
+  Style: z.string().min(3).max(500),
+  Guardrails: z.string().min(5).max(500),
+  Business_Context: z.string().min(10).max(1000),
+  Brand_Voice: z.string().min(5).max(500),
+  Success_Metrics: z.string().min(5).max(500),
 });
 
 export const ConversationView = ({ conversationId, userId, projectId, onConversationCreated }: ConversationViewProps) => {
@@ -104,8 +113,12 @@ export const ConversationView = ({ conversationId, userId, projectId, onConversa
           promptData: {
             final_prompt: promptRecord.synthesized_prompt || promptRecord.prompt_text,
             scores: promptRecord.scores,
-            datasets: metadata?.datasets || [],
-            usage_instructions: metadata?.usage_instructions || '',
+            metaprompt: metadata?.metaprompt,
+            datasets: metadata?.datasets || {},
+            compliance: metadata?.compliance,
+            citations: metadata?.citations || [],
+            confidence: metadata?.confidence,
+            latency_metrics: metadata?.latency_metrics,
           },
         });
         setShowForm(false);
