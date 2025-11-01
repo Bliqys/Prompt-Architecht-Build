@@ -140,15 +140,15 @@ function validateCollected(collected: any): Record<string, string> {
   return validated;
 }
 
-async function verifyProjectOwnership(supabaseClient: any, projectId: string, userId: string): Promise<void> {
-  const { data: project, error } = await supabaseClient
-    .from('projects')
+async function verifyConversationOwnership(supabaseClient: any, conversationId: string, userId: string): Promise<void> {
+  const { data: conversation, error } = await supabaseClient
+    .from('conversations')
     .select('id')
-    .eq('id', projectId)
+    .eq('id', conversationId)
     .eq('user_id', userId)
     .maybeSingle();
-  if (error) throw new Error('Failed to verify project access');
-  if (!project) throw new Error('Project not found or access denied');
+  if (error) throw new Error('Failed to verify conversation access');
+  if (!conversation) throw new Error('Conversation not found or access denied');
 }
 
 // === MAIN HANDLER ===
@@ -175,12 +175,12 @@ serve(async (req) => {
         return await handleInterview(supabaseClient, user.id, session_id, user_message, validatedCollected);
       case 'generate':
         if (!project_id) throw new Error('project_id required');
-        const validated_conversation_id = conversation_id ? validateUUID(conversation_id, 'conversation_id') : undefined;
-        await verifyProjectOwnership(supabaseClient, project_id, user.id);
+        if (!conversation_id) throw new Error('conversation_id required');
+        const validated_conversation_id = validateUUID(conversation_id, 'conversation_id');
+        await verifyConversationOwnership(supabaseClient, validated_conversation_id, user.id);
         return await handleGenerate(supabaseClient, user.id, session_id, project_id, user_message, validatedCollected, validated_conversation_id);
       case 'get_history':
         if (!project_id) throw new Error('project_id required');
-        await verifyProjectOwnership(supabaseClient, project_id, user.id);
         return await handleGetHistory(supabaseClient, project_id);
       default:
         throw new Error('Invalid action');
