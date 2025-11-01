@@ -303,10 +303,10 @@ async function handleGenerate(supabaseClient: any, userId: string, sessionId: st
   console.log('Starting RAG retrieval for project:', projectId);
   const searchTerms = `${collected.Goal} ${collected.Audience} ${collected.Output_Format}`.toLowerCase();
   
-  // Search historical prompts with keyword matching
+  // Search historical prompts with keyword matching (removed output_format which doesn't exist)
   const { data: historicalPrompts, error: histError } = await supabaseClient
     .from('prompt_records')
-    .select('id, synthesized_prompt, total_score, win_rate, features, output_format')
+    .select('id, synthesized_prompt, total_score, win_rate, features, metadata')
     .eq('project_id', projectId)
     .order('total_score', { ascending: false })
     .limit(10);
@@ -316,17 +316,70 @@ async function handleGenerate(supabaseClient: any, userId: string, sessionId: st
   }
   console.log('Retrieved historical prompts:', historicalPrompts?.length || 0);
 
-  // Search KB chunks - retrieve all for better context
-  const { data: kbChunks, error: kbError } = await supabaseClient
-    .from('kb_chunks')
-    .select('id, text, source_name, metadata')
-    .eq('project_id', projectId)
-    .order('created_at', { ascending: false })
-    .limit(20);
+  // Vector-based semantic search for KB chunks
+  // Generate search embedding using OpenAI
+  const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+  
+  let kbChunks: any[] = [];
+  if (OPENAI_API_KEY) {
+    try {
+      const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'text-embedding-3-small',
+          input: searchTerms,
+        }),
+      });
 
-  if (kbError) {
-    console.error('Error fetching KB chunks:', kbError);
+      if (embeddingResponse.ok) {
+        const embeddingData = await embeddingResponse.json();
+        const queryEmbedding = embeddingData.data[0].embedding;
+        
+        // Use vector similarity search - retrieve top 50 most relevant chunks
+        const { data: vectorChunks, error: kbError } = await supabaseClient.rpc(
+          'match_kb_chunks',
+          {
+            query_embedding: queryEmbedding,
+            match_threshold: 0.5,
+            match_count: 50,
+            filter_project_id: projectId
+          }
+        );
+        
+        if (kbError) {
+          console.error('Vector search error:', kbError);
+          // Fallback to basic retrieval
+          const { data: fallbackChunks } = await supabaseClient
+            .from('kb_chunks')
+            .select('id, text, source_name, metadata')
+            .eq('project_id', projectId)
+            .order('created_at', { ascending: false })
+            .limit(50);
+          kbChunks = fallbackChunks || [];
+        } else {
+          kbChunks = vectorChunks || [];
+        }
+      }
+    } catch (e) {
+      console.error('Embedding generation failed:', e);
+    }
   }
+  
+  // Fallback if no OpenAI key or embedding failed
+  if (!kbChunks || kbChunks.length === 0) {
+    const { data: fallbackChunks } = await supabaseClient
+      .from('kb_chunks')
+      .select('id, text, source_name, metadata')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    kbChunks = fallbackChunks || [];
+  }
+
   console.log('Retrieved KB chunks:', kbChunks?.length || 0);
 
   // Build evidence pack with better formatting
@@ -358,19 +411,21 @@ async function handleGenerate(supabaseClient: any, userId: string, sessionId: st
   // Step 2: Synthesize prompt using AI
   console.log('Starting prompt synthesis with collected data:', collected);
   
-  const synthesisResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+  // METAPROMPTING: Generate prompt + curated datasets
+  const synthesisResponse = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'google/gemini-2.5-pro',
+      model: 'gpt-5-2025-08-07',
+      max_completion_tokens: 4000,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { 
           role: 'user', 
-          content: `You must CREATE a brand new production-ready AI prompt based on these specifications. Do NOT ask for more information. Do NOT say you need a prompt to refine. YOU are generating the prompt right now.
+          content: `You must CREATE a metaprompting package: a production-ready AI prompt PLUS curated reference datasets extracted from the knowledge base.
 
 USER'S REQUIREMENTS:
 ━━━━━━━━━━━━━━━━━━━━━━━
@@ -383,31 +438,30 @@ STYLE/TONE: ${collected.Style || 'Professional'}
 GUARDRAILS: ${collected.Guardrails || 'Standard safety guidelines'}
 ${evidence}
 
-INSTRUCTIONS:
-Create a complete, production-ready prompt following this exact structure:
+YOUR DELIVERABLE (JSON):
+{
+  "prompt": "The complete AI prompt following the structure: # ROLE, # OBJECTIVE, # CONTEXT, # INPUT, # OUTPUT_FORMAT, # CONSTRAINTS, # EXECUTE. Use {DATASET_NAME} placeholders where reference data should be injected.",
+  "datasets": [
+    {
+      "name": "EXAMPLES_BEST_PRACTICES",
+      "description": "High-quality examples and patterns from KB",
+      "entries": ["entry1", "entry2", "..."]
+    },
+    {
+      "name": "STYLE_GUIDELINES", 
+      "description": "Tone, voice, formatting rules from KB",
+      "entries": ["guideline1", "guideline2", "..."]
+    },
+    {
+      "name": "EDGE_CASES",
+      "description": "Known failure modes and how to handle them",
+      "entries": ["case1", "case2", "..."]
+    }
+  ],
+  "usage_instructions": "How to use the prompt: 1) Replace {DATASET_NAME} with actual data, 2) Feed to AI model, 3) Validate output"
+}
 
-# ROLE
-[Define the AI's role/persona based on the goal and audience]
-
-# OBJECTIVE  
-[Single, clear, measurable goal based on: ${collected.Goal}]
-
-# CONTEXT
-[Background: audience, channel, purpose - use: ${collected.Audience}]
-
-# INPUT
-[What data will be provided - specify: ${collected.Inputs}]
-
-# OUTPUT_FORMAT
-[Exact format - ${collected.Output_Format} with detailed schema if JSON]
-
-# CONSTRAINTS
-[Hard limits: ${collected.Constraints}]
-
-# EXECUTE
-[Clear instruction to begin]
-
-Output ONLY the final prompt. No meta-commentary. Start with "# ROLE" and end with the execute instruction.` 
+Extract 2-4 datasets from the knowledge base. Make them actionable and directly useful. Return ONLY valid JSON, no markdown.` 
         }
       ],
     }),
@@ -426,18 +480,45 @@ Output ONLY the final prompt. No meta-commentary. Start with "# ROLE" and end wi
     throw new Error('Invalid response from AI model');
   }
   
-  const synthesizedPrompt = synthesisData.choices[0].message.content;
-  console.log('Successfully synthesized prompt, length:', synthesizedPrompt.length);
+  const rawContent = synthesisData.choices[0].message.content;
+  console.log('Raw synthesis response:', rawContent.substring(0, 200));
+  
+  // Parse metaprompting JSON
+  let metaPrompt: any;
+  try {
+    const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      metaPrompt = JSON.parse(jsonMatch[0]);
+    } else {
+      // Fallback: treat as plain prompt
+      metaPrompt = {
+        prompt: rawContent,
+        datasets: [],
+        usage_instructions: "Use this prompt directly with your AI model"
+      };
+    }
+  } catch (e) {
+    console.error('Failed to parse metaprompt JSON:', e);
+    metaPrompt = {
+      prompt: rawContent,
+      datasets: [],
+      usage_instructions: "Use this prompt directly with your AI model"
+    };
+  }
+  
+  const synthesizedPrompt = metaPrompt.prompt;
+  console.log('Successfully synthesized metaprompt, datasets:', metaPrompt.datasets?.length || 0);
 
-  // Step 3: Grade the prompt
-  const gradingResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+  // Step 3: Grade the prompt using OpenAI
+  const gradingResponse = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
+      model: 'gpt-5-mini-2025-08-07',
+      max_completion_tokens: 500,
       messages: [
         { 
           role: 'system', 
@@ -464,39 +545,52 @@ Output ONLY the final prompt. No meta-commentary. Start with "# ROLE" and end wi
     console.error('Error parsing grades:', e);
   }
 
-  // Step 4: Refine if needed
+  // Step 4: Refine if needed using OpenAI
   let finalPrompt = synthesizedPrompt;
+  let finalMetaPrompt = metaPrompt;
   if (scores.total < 0.80 || Object.values(scores).some((v: any) => typeof v === 'number' && v < 0.70)) {
-    const refinementResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const refinementResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'gpt-5-mini-2025-08-07',
+        max_completion_tokens: 4000,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
           { 
             role: 'user', 
-            content: `This prompt scored ${scores.total}. Refine it to score ≥0.80:\n\n${synthesizedPrompt}\n\nScores: ${JSON.stringify(scores)}\n\nMaintain the structure but improve clarity, completeness, and determinism.` 
+            content: `This prompt scored ${scores.total}. Refine ONLY the prompt field to score ≥0.80. Keep datasets unchanged.\n\nCurrent:\n${JSON.stringify(metaPrompt, null, 2)}\n\nScores: ${JSON.stringify(scores)}\n\nReturn complete JSON with refined prompt.` 
           }
         ],
       }),
     });
 
     const refinementData = await refinementResponse.json();
-    finalPrompt = refinementData.choices[0].message.content;
+    const refinedContent = refinementData.choices[0].message.content;
+    
+    try {
+      const jsonMatch = refinedContent.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        finalMetaPrompt = JSON.parse(jsonMatch[0]);
+        finalPrompt = finalMetaPrompt.prompt;
+      }
+    } catch (e) {
+      console.error('Failed to parse refined JSON:', e);
+    }
 
-    // Re-grade
-    const regradeResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    // Re-grade using OpenAI
+    const regradeResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'gpt-5-mini-2025-08-07',
+        max_completion_tokens: 500,
         messages: [
           { 
             role: 'system', 

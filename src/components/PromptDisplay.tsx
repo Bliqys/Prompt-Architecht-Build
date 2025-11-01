@@ -141,6 +141,45 @@ export const PromptDisplay = () => {
         </CardContent>
       </Card>
 
+      {/* Datasets */}
+      {promptData.datasets && promptData.datasets.length > 0 && (
+        <Card className="glass elevated-sm border-border/50 bg-gradient-to-br from-primary/5 to-purple-500/5">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              Reference Datasets
+              <Badge variant="outline" className="ml-auto">
+                {promptData.datasets.length} datasets
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {promptData.datasets.map((dataset: any, idx: number) => (
+              <div key={idx} className="p-4 bg-card rounded-lg border border-border/50">
+                <div className="flex items-start justify-between mb-2">
+                  <h4 className="font-mono text-sm font-semibold text-primary">
+                    {dataset.name}
+                  </h4>
+                  <Badge variant="secondary" className="text-xs">
+                    {dataset.entries?.length || 0} entries
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  {dataset.description}
+                </p>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {dataset.entries?.map((entry: string, i: number) => (
+                    <div key={i} className="text-xs p-2 bg-muted/30 rounded border border-border/30">
+                      {entry}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Prompt Text */}
       <Card className="glass elevated-sm border-border/50">
         <CardHeader>
@@ -181,6 +220,20 @@ export const PromptDisplay = () => {
           </pre>
         </CardContent>
       </Card>
+
+      {/* Usage Instructions */}
+      {promptData.usage_instructions && (
+        <Card className="glass elevated-sm border-border/50 bg-blue-500/5">
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold">📖 How to Use This Prompt</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-wrap">
+              {promptData.usage_instructions}
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Usage Tips */}
       <Card className="glass elevated-sm border-border/50 bg-primary/5">
