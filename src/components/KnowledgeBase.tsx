@@ -86,7 +86,7 @@ export const KnowledgeBase = ({ projectId }: KnowledgeBaseProps) => {
 
       console.log(`Uploading ${files.length} file(s) with ${totalChunks} total chunks to project ${projectId}`);
 
-      // Second pass: upload chunks
+      // Second pass: upload chunks with embeddings
       for (const file of files) {
         const text = await file.text();
         const chunks = chunkText(text, 1000);
@@ -94,16 +94,34 @@ export const KnowledgeBase = ({ projectId }: KnowledgeBaseProps) => {
         console.log(`Processing file: ${file.name} (${chunks.length} chunks)`);
 
         for (let i = 0; i < chunks.length; i++) {
+          // Generate embedding for this chunk
+          let embedding = null;
+          try {
+            const { data: embeddingData, error: embeddingError } = await supabase.functions.invoke('generate-embedding', {
+              body: { text: chunks[i] }
+            });
+            
+            if (!embeddingError && embeddingData?.embedding) {
+              embedding = embeddingData.embedding;
+            } else {
+              console.warn('Embedding generation failed:', embeddingError);
+            }
+          } catch (e) {
+            console.warn('Embedding error:', e);
+          }
+
           const { error } = await supabase.from('kb_chunks').insert({
             project_id: projectId,
             text: chunks[i],
             source_name: file.name,
             chunk_index: i,
+            embedding: embedding,
             metadata: {
               file_size: file.size,
               file_type: file.type,
               total_chunks: chunks.length,
               upload_timestamp: new Date().toISOString(),
+              has_embedding: !!embedding,
             },
           });
 
@@ -119,7 +137,7 @@ export const KnowledgeBase = ({ projectId }: KnowledgeBaseProps) => {
 
       toast({
         title: "Knowledge Base Updated",
-        description: `Successfully uploaded ${files.length} file(s) with ${totalChunks} chunks`,
+        description: `Successfully uploaded ${files.length} file(s) with ${totalChunks} vector-embedded chunks`,
       });
 
       setFiles([]);
@@ -150,7 +168,7 @@ export const KnowledgeBase = ({ projectId }: KnowledgeBaseProps) => {
             )}
           </div>
           <p className="text-sm text-muted-foreground">
-            Upload prompt engineering datasets, best practices, and examples for RAG-powered generation
+            Upload prompt engineering datasets, best practices, and examples. Files are automatically embedded using OpenAI for semantic search.
           </p>
         </div>
 
