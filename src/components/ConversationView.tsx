@@ -141,7 +141,6 @@ export const ConversationView = ({ conversationId, userId, projectId, onConversa
     }
 
     setLoading(true);
-    setShowForm(false);
 
     // Create conversation title from Goal
     const title = collected.Goal.substring(0, 60) + (collected.Goal.length > 60 ? '...' : '');
@@ -202,8 +201,9 @@ export const ConversationView = ({ conversationId, userId, projectId, onConversa
         },
       ]);
 
-      setShowForm(false);
+      // Update parent with conversation ID BEFORE hiding form
       onConversationCreated(conversation.id);
+      setShowForm(false);
 
       toast({
         title: "Success!",
