@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Upload, FileText, Trash2, Loader2 } from "lucide-react";
+import { Upload, FileText, Trash2, Loader2, Database } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 
 interface KnowledgeBaseProps {
   projectId: string;
@@ -14,14 +15,50 @@ export const KnowledgeBase = ({ projectId }: KnowledgeBaseProps) => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [files, setFiles] = useState<File[]>([]);
+  const [kbCount, setKbCount] = useState<number>(0);
+  const [loadingCount, setLoadingCount] = useState(true);
   const { toast } = useToast();
+
+  // Fetch current KB chunk count
+  useEffect(() => {
+    const fetchKBCount = async () => {
+      try {
+        const { count, error } = await supabase
+          .from('kb_chunks')
+          .select('*', { count: 'exact', head: true })
+          .eq('project_id', projectId);
+        
+        if (error) throw error;
+        setKbCount(count || 0);
+      } catch (error) {
+        console.error('Error fetching KB count:', error);
+      } finally {
+        setLoadingCount(false);
+      }
+    };
+
+    fetchKBCount();
+  }, [projectId, uploading]);
 
   const chunkText = (text: string, chunkSize = 1000): string[] => {
     const chunks: string[] = [];
-    for (let i = 0; i < text.length; i += chunkSize) {
-      chunks.push(text.slice(i, i + chunkSize));
+    const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+    let currentChunk = '';
+    
+    for (const sentence of sentences) {
+      if (currentChunk.length + sentence.length > chunkSize && currentChunk.length > 0) {
+        chunks.push(currentChunk.trim());
+        currentChunk = sentence;
+      } else {
+        currentChunk += sentence;
+      }
     }
-    return chunks;
+    
+    if (currentChunk) {
+      chunks.push(currentChunk.trim());
+    }
+    
+    return chunks.filter(chunk => chunk.length > 0);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -37,31 +74,52 @@ export const KnowledgeBase = ({ projectId }: KnowledgeBaseProps) => {
     setUploadProgress(0);
 
     try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const text = await file.text();
-        const chunks = chunkText(text);
+      let totalChunks = 0;
+      let processedChunks = 0;
 
-        for (let j = 0; j < chunks.length; j++) {
-          await supabase.from('kb_chunks').insert({
+      // First pass: count total chunks
+      for (const file of files) {
+        const text = await file.text();
+        const chunks = chunkText(text, 1000);
+        totalChunks += chunks.length;
+      }
+
+      console.log(`Uploading ${files.length} file(s) with ${totalChunks} total chunks to project ${projectId}`);
+
+      // Second pass: upload chunks
+      for (const file of files) {
+        const text = await file.text();
+        const chunks = chunkText(text, 1000);
+        
+        console.log(`Processing file: ${file.name} (${chunks.length} chunks)`);
+
+        for (let i = 0; i < chunks.length; i++) {
+          const { error } = await supabase.from('kb_chunks').insert({
             project_id: projectId,
-            text: chunks[j],
-            chunk_index: j,
+            text: chunks[i],
             source_name: file.name,
+            chunk_index: i,
             metadata: {
-              filename: file.name,
-              chunk_total: chunks.length,
-              uploaded_at: new Date().toISOString(),
+              file_size: file.size,
+              file_type: file.type,
+              total_chunks: chunks.length,
+              upload_timestamp: new Date().toISOString(),
             },
           });
 
-          setUploadProgress(((i * chunks.length + j + 1) / (files.length * chunks.length)) * 100);
+          if (error) {
+            console.error('Error uploading chunk:', error);
+            throw error;
+          }
+
+          processedChunks++;
+          setUploadProgress((processedChunks / totalChunks) * 100);
         }
       }
 
       toast({
-        title: "Knowledge base updated",
-        description: `Uploaded ${files.length} file(s) successfully`,
+        title: "Knowledge Base Updated",
+        description: `Successfully uploaded ${files.length} file(s) with ${totalChunks} chunks`,
       });
 
       setFiles([]);
@@ -69,8 +127,8 @@ export const KnowledgeBase = ({ projectId }: KnowledgeBaseProps) => {
     } catch (error: any) {
       console.error('Upload error:', error);
       toast({
-        title: "Upload failed",
-        description: error.message,
+        title: "Upload Failed",
+        description: error.message || "Failed to upload knowledge base files",
         variant: "destructive",
       });
     } finally {
@@ -82,9 +140,17 @@ export const KnowledgeBase = ({ projectId }: KnowledgeBaseProps) => {
     <Card className="p-8 glass elevated animate-slide-up">
       <div className="space-y-6">
         <div className="space-y-2">
-          <h3 className="text-2xl font-semibold tracking-tight">Knowledge Base</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-2xl font-semibold tracking-tight">Knowledge Base</h3>
+            {!loadingCount && (
+              <Badge variant={kbCount > 0 ? "default" : "secondary"} className="gap-1.5">
+                <Database className="w-3 h-3" />
+                {kbCount} chunks
+              </Badge>
+            )}
+          </div>
           <p className="text-sm text-muted-foreground">
-            Upload prompt engineering datasets for the AI to reference during generation
+            Upload prompt engineering datasets, best practices, and examples for RAG-powered generation
           </p>
         </div>
 

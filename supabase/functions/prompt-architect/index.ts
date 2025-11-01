@@ -300,39 +300,64 @@ async function handleGenerate(supabaseClient: any, userId: string, sessionId: st
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
   // Step 1: RAG - Search historical prompts and KB
-  const query = `${collected.Goal} ${collected.Audience} ${collected.Output_Format}`.trim();
+  console.log('Starting RAG retrieval for project:', projectId);
+  const searchTerms = `${collected.Goal} ${collected.Audience} ${collected.Output_Format}`.toLowerCase();
   
-  // Search historical prompts (simplified - in production use vector similarity)
-  const { data: historicalPrompts } = await supabaseClient
+  // Search historical prompts with keyword matching
+  const { data: historicalPrompts, error: histError } = await supabaseClient
     .from('prompt_records')
-    .select('id, synthesized_prompt, total_score, win_rate, features')
+    .select('id, synthesized_prompt, total_score, win_rate, features, output_format')
     .eq('project_id', projectId)
     .order('total_score', { ascending: false })
-    .limit(5);
+    .limit(10);
 
-  // Search KB chunks (simplified - in production use vector similarity)
-  const { data: kbChunks } = await supabaseClient
+  if (histError) {
+    console.error('Error fetching historical prompts:', histError);
+  }
+  console.log('Retrieved historical prompts:', historicalPrompts?.length || 0);
+
+  // Search KB chunks - retrieve all for better context
+  const { data: kbChunks, error: kbError } = await supabaseClient
     .from('kb_chunks')
-    .select('id, text, metadata')
+    .select('id, text, source_name, metadata')
     .eq('project_id', projectId)
-    .limit(5);
+    .order('created_at', { ascending: false })
+    .limit(20);
 
-  // Build evidence pack
-  let evidence = '\n\n--- EVIDENCE FROM KNOWLEDGE BASE ---\n';
-  if (historicalPrompts && historicalPrompts.length > 0) {
-    evidence += '\nHISTORICAL HIGH-PERFORMING PROMPTS:\n';
-    historicalPrompts.forEach((p: any, i: number) => {
-      evidence += `\n[${i + 1}] Score: ${p.total_score}, Win Rate: ${p.win_rate}\n${p.synthesized_prompt.substring(0, 500)}...\n`;
-    });
+  if (kbError) {
+    console.error('Error fetching KB chunks:', kbError);
   }
+  console.log('Retrieved KB chunks:', kbChunks?.length || 0);
+
+  // Build evidence pack with better formatting
+  let evidence = '\n\n━━━━━━━━━━━━━━━━━━━━━━━\nKNOWLEDGE BASE & EVIDENCE\n━━━━━━━━━━━━━━━━━━━━━━━\n';
+  
   if (kbChunks && kbChunks.length > 0) {
-    evidence += '\nKNOWLEDGE BASE PATTERNS:\n';
+    evidence += '\n📚 PROMPT ENGINEERING KNOWLEDGE BASE:\n';
+    evidence += '(Use these patterns, best practices, and examples to inform your prompt creation)\n\n';
     kbChunks.forEach((chunk: any, i: number) => {
-      evidence += `\n[${i + 1}] ${chunk.text.substring(0, 300)}...\n`;
+      const source = chunk.source_name ? `[${chunk.source_name}]` : '';
+      evidence += `${source}\n${chunk.text}\n\n`;
+    });
+  } else {
+    evidence += '\n⚠️  No knowledge base data available - generate based on best practices.\n';
+  }
+  
+  if (historicalPrompts && historicalPrompts.length > 0) {
+    evidence += '\n📊 HIGH-PERFORMING HISTORICAL PROMPTS FROM THIS PROJECT:\n';
+    evidence += '(Reference these successful patterns)\n\n';
+    historicalPrompts.slice(0, 3).forEach((p: any, i: number) => {
+      evidence += `[Example ${i + 1}] Score: ${p.total_score?.toFixed(2) || 'N/A'}\n`;
+      evidence += `Format: ${p.output_format}\n`;
+      evidence += `${p.synthesized_prompt.substring(0, 400)}...\n\n`;
     });
   }
+  
+  console.log('Evidence pack built - KB chunks:', kbChunks?.length || 0, 'Historical:', historicalPrompts?.length || 0);
 
   // Step 2: Synthesize prompt using AI
+  console.log('Starting prompt synthesis with collected data:', collected);
+  
   const synthesisResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -340,19 +365,69 @@ async function handleGenerate(supabaseClient: any, userId: string, sessionId: st
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
+      model: 'google/gemini-2.5-pro',
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { 
           role: 'user', 
-          content: `Generate a production-ready prompt with this information:\n\nGOAL: ${collected.Goal}\nAUDIENCE: ${collected.Audience}\nINPUTS: ${collected.Inputs}\nOUTPUT FORMAT: ${collected.Output_Format}\nCONSTRAINTS: ${collected.Constraints}\nSTYLE/TONE: ${collected.Style || 'Professional'}\nGUARDRAILS: ${collected.Guardrails || 'Standard safety guidelines'}${evidence}\n\nFollow the exact structure: ROLE → OBJECTIVE → CONTEXT → INPUT → OUTPUT_FORMAT → CONSTRAINTS → EXECUTE` 
+          content: `You must CREATE a brand new production-ready AI prompt based on these specifications. Do NOT ask for more information. Do NOT say you need a prompt to refine. YOU are generating the prompt right now.
+
+USER'S REQUIREMENTS:
+━━━━━━━━━━━━━━━━━━━━━━━
+GOAL: ${collected.Goal}
+AUDIENCE/CHANNEL: ${collected.Audience}
+EXPECTED INPUTS: ${collected.Inputs}
+OUTPUT FORMAT: ${collected.Output_Format}
+CONSTRAINTS: ${collected.Constraints}
+STYLE/TONE: ${collected.Style || 'Professional'}
+GUARDRAILS: ${collected.Guardrails || 'Standard safety guidelines'}
+${evidence}
+
+INSTRUCTIONS:
+Create a complete, production-ready prompt following this exact structure:
+
+# ROLE
+[Define the AI's role/persona based on the goal and audience]
+
+# OBJECTIVE  
+[Single, clear, measurable goal based on: ${collected.Goal}]
+
+# CONTEXT
+[Background: audience, channel, purpose - use: ${collected.Audience}]
+
+# INPUT
+[What data will be provided - specify: ${collected.Inputs}]
+
+# OUTPUT_FORMAT
+[Exact format - ${collected.Output_Format} with detailed schema if JSON]
+
+# CONSTRAINTS
+[Hard limits: ${collected.Constraints}]
+
+# EXECUTE
+[Clear instruction to begin]
+
+Output ONLY the final prompt. No meta-commentary. Start with "# ROLE" and end with the execute instruction.` 
         }
       ],
     }),
   });
 
+  if (!synthesisResponse.ok) {
+    const errorText = await synthesisResponse.text();
+    console.error('Synthesis API error:', errorText);
+    throw new Error('Failed to synthesize prompt');
+  }
+
   const synthesisData = await synthesisResponse.json();
+  
+  if (!synthesisData.choices || !synthesisData.choices[0]) {
+    console.error('Invalid synthesis response:', synthesisData);
+    throw new Error('Invalid response from AI model');
+  }
+  
   const synthesizedPrompt = synthesisData.choices[0].message.content;
+  console.log('Successfully synthesized prompt, length:', synthesizedPrompt.length);
 
   // Step 3: Grade the prompt
   const gradingResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -448,20 +523,21 @@ async function handleGenerate(supabaseClient: any, userId: string, sessionId: st
   }
 
   // Step 5: Store the prompt
+  console.log('Storing prompt record with score:', scores.total);
   const { data: promptRecord, error: storeError } = await supabaseClient
     .from('prompt_records')
     .insert({
       project_id: projectId,
-      user_question: userMessage,
+      prompt_text: userMessage || 'Generated from form',
       synthesized_prompt: finalPrompt,
-      references: {
+      metadata: {
         historical_prompts: (historicalPrompts || []).map((p: any) => p.id),
-        kb_chunks: (kbChunks || []).map((c: any) => c.id)
+        kb_chunks: (kbChunks || []).map((c: any) => c.id),
+        kb_sources_used: kbChunks?.length || 0,
+        historical_used: historicalPrompts?.length || 0
       },
-      rubric_scores: scores,
+      scores: scores,
       total_score: scores.total,
-      output_format: collected.Output_Format,
-      model_used: 'prompt-architect-ce',
       features: collected
     })
     .select()
@@ -469,7 +545,10 @@ async function handleGenerate(supabaseClient: any, userId: string, sessionId: st
 
   if (storeError) {
     console.error('Error storing prompt:', storeError);
+    throw new Error('Failed to save prompt record');
   }
+  
+  console.log('Prompt record saved with ID:', promptRecord?.id);
 
   // Link interview turns to prompt record
   if (promptRecord) {
@@ -479,15 +558,18 @@ async function handleGenerate(supabaseClient: any, userId: string, sessionId: st
       .eq('session_id', sessionId);
   }
 
+  console.log('Generation complete - returning response');
   return new Response(
     JSON.stringify({
       type: 'generated',
       prompt: finalPrompt,
       scores,
       id: promptRecord?.id,
+      collected,
       references: {
         historical_count: historicalPrompts?.length || 0,
-        kb_count: kbChunks?.length || 0
+        kb_count: kbChunks?.length || 0,
+        evidence_quality: kbChunks && kbChunks.length > 0 ? 'high' : 'baseline'
       }
     }),
     { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -497,13 +579,17 @@ async function handleGenerate(supabaseClient: any, userId: string, sessionId: st
 async function handleGetHistory(supabaseClient: any, projectId: string) {
   const { data: prompts, error } = await supabaseClient
     .from('prompt_records')
-    .select('id, user_question, synthesized_prompt, total_score, win_rate, output_format, created_at')
+    .select('id, prompt_text, synthesized_prompt, total_score, win_rate, created_at, scores, features')
     .eq('project_id', projectId)
     .order('created_at', { ascending: false })
     .limit(20);
 
-  if (error) throw error;
+  if (error) {
+    console.error('Error fetching history:', error);
+    throw error;
+  }
 
+  console.log('Retrieved prompt history:', prompts?.length || 0);
   return new Response(
     JSON.stringify({ prompts }),
     { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
