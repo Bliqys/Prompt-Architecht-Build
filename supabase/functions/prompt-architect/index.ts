@@ -156,16 +156,32 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    // Create client for auth verification with user's JWT
-    const authClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
-    );
+    const requestData = await req.json();
+    const { action, session_id, project_id, user_message, collected = {}, conversation_id } = requestData;
 
-    // Get and verify user
-    const { data: { user }, error: userError } = await authClient.auth.getUser();
-    if (userError || !user) throw new Error('Unauthorized');
+    // Extract user ID from JWT token
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new Error('Missing or invalid Authorization header');
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    let userId: string;
+    
+    try {
+      // Decode JWT to get user ID (payload is the middle part)
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      userId = payload.sub;
+      
+      if (!userId) {
+        throw new Error('No user ID in token');
+      }
+      
+      console.log('Authenticated user:', userId);
+    } catch (e) {
+      console.error('Failed to parse JWT:', e);
+      throw new Error('Invalid token format');
+    }
 
     // Create service role client for database operations
     const supabaseClient = createClient(
@@ -173,20 +189,17 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const requestData = await req.json();
-    const { action, session_id, project_id, user_message, collected = {}, conversation_id } = requestData;
-
     const validatedCollected = validateCollected(collected);
 
     switch (action) {
       case 'interview':
-        return await handleInterview(supabaseClient, user.id, session_id, user_message, validatedCollected);
+        return await handleInterview(supabaseClient, userId, session_id, user_message, validatedCollected);
       case 'generate':
         if (!project_id) throw new Error('project_id required');
         if (!conversation_id) throw new Error('conversation_id required');
         const validated_conversation_id = validateUUID(conversation_id, 'conversation_id');
-        await verifyConversationOwnership(supabaseClient, validated_conversation_id, user.id);
-        return await handleGenerate(supabaseClient, user.id, session_id, project_id, user_message, validatedCollected, validated_conversation_id);
+        await verifyConversationOwnership(supabaseClient, validated_conversation_id, userId);
+        return await handleGenerate(supabaseClient, userId, session_id, project_id, user_message, validatedCollected, validated_conversation_id);
       case 'get_history':
         if (!project_id) throw new Error('project_id required');
         return await handleGetHistory(supabaseClient, project_id);
