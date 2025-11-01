@@ -6,35 +6,35 @@
 
 @layer base {
   :root {
-    /* iOS Light Mode Colors */
+    /* NeuraCall Light Mode Colors */
     --background: 0 0% 100%;
-    --foreground: 0 0% 13%;
+    --foreground: 258 90% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 13%;
+    --card-foreground: 258 90% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 13%;
+    --popover-foreground: 258 90% 15%;
 
-    /* iOS Blue - SF Symbols Blue */
-    --primary: 211 100% 50%;
+    /* NeuraCall Purple */
+    --primary: 262 83% 58%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 17% 95%;
-    --secondary-foreground: 0 0% 13%;
+    --secondary: 262 90% 95%;
+    --secondary-foreground: 258 90% 15%;
 
-    --muted: 210 17% 95%;
-    --muted-foreground: 0 0% 45%;
+    --muted: 262 50% 96%;
+    --muted-foreground: 262 10% 46%;
 
-    --accent: 210 17% 95%;
-    --accent-foreground: 0 0% 13%;
+    --accent: 270 91% 65%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 20% 90%;
-    --input: 214 20% 90%;
-    --ring: 211 100% 50%;
+    --border: 262 30% 88%;
+    --input: 262 30% 88%;
+    --ring: 262 83% 58%;
 
     --radius: 12px;
 
@@ -49,44 +49,44 @@
     --blur-light: 20px;
     --blur-heavy: 40px;
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 0 0% 13%;
-    --sidebar-primary: 211 100% 50%;
+    --sidebar-background: 262 90% 98%;
+    --sidebar-foreground: 258 90% 15%;
+    --sidebar-primary: 262 83% 58%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 17% 95%;
-    --sidebar-accent-foreground: 0 0% 13%;
-    --sidebar-border: 214 20% 90%;
-    --sidebar-ring: 211 100% 50%;
+    --sidebar-accent: 262 50% 95%;
+    --sidebar-accent-foreground: 258 90% 15%;
+    --sidebar-border: 262 30% 88%;
+    --sidebar-ring: 262 83% 58%;
   }
 
   .dark {
-    --background: 0 0% 7%;
-    --foreground: 0 0% 98%;
+    --background: 258 70% 8%;
+    --foreground: 0 0% 100%;
 
-    --card: 0 0% 11%;
-    --card-foreground: 0 0% 98%;
+    --card: 258 60% 12%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 0 0% 11%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 258 60% 12%;
+    --popover-foreground: 0 0% 100%;
 
-    --primary: 211 100% 50%;
+    --primary: 262 83% 58%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 258 50% 20%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 60%;
+    --muted: 258 40% 18%;
+    --muted-foreground: 262 30% 70%;
 
-    --accent: 0 0% 15%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 270 91% 65%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
-    --ring: 211 100% 50%;
+    --border: 258 40% 25%;
+    --input: 258 40% 25%;
+    --ring: 262 83% 58%;
 
     --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.4);
@@ -94,14 +94,14 @@
     --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
     --shadow-xl: 0 12px 40px rgba(0, 0, 0, 0.7);
 
-    --sidebar-background: 0 0% 11%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 211 100% 50%;
+    --sidebar-background: 258 60% 12%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 262 83% 58%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 15%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 0 0% 20%;
-    --sidebar-ring: 211 100% 50%;
+    --sidebar-accent: 258 50% 20%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 258 40% 25%;
+    --sidebar-ring: 262 83% 58%;
   }
 }
 
@@ -129,9 +129,9 @@
     border-radius: 6px;
   }
 
-  /* Selection color matching iOS blue */
+  /* Selection color matching NeuraCall purple */
   ::selection {
-    background-color: hsl(211 100% 50% / 0.3);
+    background-color: hsl(262 83% 58% / 0.3);
   }
 }
 
