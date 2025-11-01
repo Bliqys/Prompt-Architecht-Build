@@ -6,6 +6,93 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Input validation constants
+const MAX_MESSAGE_LENGTH = 10000;
+const MAX_FIELD_LENGTH = 2000;
+const MAX_GOAL_LENGTH = 500;
+const ALLOWED_OUTPUT_FORMATS = ['json', 'markdown', 'plaintext', 'xml', 'yaml'];
+
+// Input validation functions
+function validateString(value: unknown, maxLength: number, fieldName: string): string {
+  if (typeof value !== 'string') {
+    throw new Error(`${fieldName} must be a string`);
+  }
+  if (value.length > maxLength) {
+    throw new Error(`${fieldName} exceeds maximum length of ${maxLength} characters`);
+  }
+  return value.trim();
+}
+
+function validateCollectedFields(collected: any): Record<string, string> {
+  if (typeof collected !== 'object' || collected === null) {
+    throw new Error('Collected fields must be an object');
+  }
+  
+  const validated: Record<string, string> = {};
+  
+  if (collected.Goal !== undefined) {
+    validated.Goal = validateString(collected.Goal, MAX_GOAL_LENGTH, 'Goal');
+  }
+  if (collected.Audience !== undefined) {
+    validated.Audience = validateString(collected.Audience, MAX_FIELD_LENGTH, 'Audience');
+  }
+  if (collected.Inputs !== undefined) {
+    validated.Inputs = validateString(collected.Inputs, MAX_FIELD_LENGTH, 'Inputs');
+  }
+  if (collected.Output_Format !== undefined) {
+    const format = validateString(collected.Output_Format, 50, 'Output_Format').toLowerCase();
+    if (!ALLOWED_OUTPUT_FORMATS.includes(format)) {
+      throw new Error(`Output_Format must be one of: ${ALLOWED_OUTPUT_FORMATS.join(', ')}`);
+    }
+    validated.Output_Format = format;
+  }
+  if (collected.Constraints !== undefined) {
+    validated.Constraints = validateString(collected.Constraints, MAX_FIELD_LENGTH, 'Constraints');
+  }
+  if (collected.Style !== undefined) {
+    validated.Style = validateString(collected.Style, 500, 'Style');
+  }
+  if (collected.Guardrails !== undefined) {
+    validated.Guardrails = validateString(collected.Guardrails, 500, 'Guardrails');
+  }
+  
+  return validated;
+}
+
+function validateUUID(value: unknown, fieldName: string): string {
+  if (typeof value !== 'string') {
+    throw new Error(`${fieldName} must be a string`);
+  }
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(value)) {
+    throw new Error(`${fieldName} must be a valid UUID`);
+  }
+  return value;
+}
+
+// Project ownership verification
+async function verifyProjectOwnership(
+  supabaseClient: any,
+  projectId: string,
+  userId: string
+): Promise<void> {
+  const { data: project, error } = await supabaseClient
+    .from('projects')
+    .select('id')
+    .eq('id', projectId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error verifying project ownership:', error);
+    throw new Error('Failed to verify project access');
+  }
+  
+  if (!project) {
+    throw new Error('Project not found or access denied');
+  }
+}
+
 // Master system prompt for the AI
 const SYSTEM_PROMPT = `You are "Prompt Architect", an enterprise-grade senior prompt engineer.
 
@@ -75,7 +162,8 @@ serve(async (req) => {
       }
     );
 
-    const { action, session_id, project_id, user_message, collected = {} } = await req.json();
+    const requestData = await req.json();
+    const { action, session_id, project_id, user_message, collected = {} } = requestData;
 
     // Get user
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
@@ -83,15 +171,34 @@ serve(async (req) => {
       throw new Error('Unauthorized');
     }
 
+    // Validate inputs
+    if (action && typeof action !== 'string') {
+      throw new Error('Invalid action');
+    }
+    if (session_id !== undefined) {
+      validateString(session_id, 100, 'session_id');
+    }
+    if (project_id !== undefined) {
+      validateUUID(project_id, 'project_id');
+    }
+    if (user_message !== undefined) {
+      validateString(user_message, MAX_MESSAGE_LENGTH, 'user_message');
+    }
+    const validatedCollected = validateCollectedFields(collected);
+
     // Handle different actions
     switch (action) {
       case 'interview':
-        return await handleInterview(supabaseClient, user.id, session_id, user_message, collected);
+        return await handleInterview(supabaseClient, user.id, session_id, user_message, validatedCollected);
       
       case 'generate':
-        return await handleGenerate(supabaseClient, user.id, session_id, project_id, user_message, collected);
+        if (!project_id) throw new Error('project_id is required for generate action');
+        await verifyProjectOwnership(supabaseClient, project_id, user.id);
+        return await handleGenerate(supabaseClient, user.id, session_id, project_id, user_message, validatedCollected);
       
       case 'get_history':
+        if (!project_id) throw new Error('project_id is required for get_history action');
+        await verifyProjectOwnership(supabaseClient, project_id, user.id);
         return await handleGetHistory(supabaseClient, project_id);
       
       default:
@@ -99,9 +206,27 @@ serve(async (req) => {
     }
   } catch (error) {
     console.error('Error in prompt-architect function:', error);
+    
+    // Map errors to safe user-facing messages
+    let userMessage = 'An error occurred while processing your request';
+    let statusCode = 500;
+    
+    if (error instanceof Error) {
+      if (error.message.includes('Unauthorized') || error.message.includes('access denied')) {
+        userMessage = 'Access denied';
+        statusCode = 403;
+      } else if (error.message.includes('not found')) {
+        userMessage = 'Resource not found';
+        statusCode = 404;
+      } else if (error.message.includes('must be') || error.message.includes('exceeds') || error.message.includes('required')) {
+        userMessage = error.message; // Validation errors are safe to show
+        statusCode = 400;
+      }
+    }
+    
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: userMessage }),
+      { status: statusCode, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

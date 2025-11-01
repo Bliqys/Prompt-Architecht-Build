@@ -14,7 +14,173 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      interview_turns: {
+        Row: {
+          ai_message: string | null
+          collected: Json | null
+          created_at: string
+          id: string
+          project_id: string
+          session_id: string
+          turn_number: number
+          user_message: string | null
+        }
+        Insert: {
+          ai_message?: string | null
+          collected?: Json | null
+          created_at?: string
+          id?: string
+          project_id: string
+          session_id: string
+          turn_number: number
+          user_message?: string | null
+        }
+        Update: {
+          ai_message?: string | null
+          collected?: Json | null
+          created_at?: string
+          id?: string
+          project_id?: string
+          session_id?: string
+          turn_number?: number
+          user_message?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_turns_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kb_chunks: {
+        Row: {
+          content: string
+          created_at: string
+          embedding: string | null
+          id: string
+          metadata: Json | null
+          project_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          embedding?: string | null
+          id?: string
+          metadata?: Json | null
+          project_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          embedding?: string | null
+          id?: string
+          metadata?: Json | null
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kb_chunks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      prompt_outcomes: {
+        Row: {
+          created_at: string
+          feedback: string | null
+          id: string
+          outcome: string | null
+          prompt_record_id: string
+          rating: number | null
+        }
+        Insert: {
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          outcome?: string | null
+          prompt_record_id: string
+          rating?: number | null
+        }
+        Update: {
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          outcome?: string | null
+          prompt_record_id?: string
+          rating?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prompt_outcomes_prompt_record_id_fkey"
+            columns: ["prompt_record_id"]
+            isOneToOne: false
+            referencedRelation: "prompt_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prompt_records: {
+        Row: {
+          created_at: string
+          id: string
+          metadata: Json | null
+          project_id: string
+          prompt_text: string
+          scores: Json | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          project_id: string
+          prompt_text: string
+          scores?: Json | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          project_id?: string
+          prompt_text?: string
+          scores?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prompt_records_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
