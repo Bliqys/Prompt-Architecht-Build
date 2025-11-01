@@ -56,12 +56,18 @@ export const PromptHistory = ({ userId }: PromptHistoryProps) => {
     }
   };
 
-  const handleSelectPrompt = (prompt: any) => {
+  const handleSelectPrompt = (e: React.MouseEvent, prompt: any) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     const promptData = {
       final_prompt: prompt.synthesized_prompt || prompt.prompt_text,
       prompt: prompt.synthesized_prompt || prompt.prompt_text,
       scores: prompt.scores,
+      datasets: prompt.datasets,
+      usage_instructions: prompt.usage_instructions,
     };
+    
     localStorage.setItem('latestPrompt', JSON.stringify(promptData));
     window.dispatchEvent(new CustomEvent('promptGenerated'));
   };
@@ -99,7 +105,14 @@ export const PromptHistory = ({ userId }: PromptHistoryProps) => {
             <Card
               key={prompt.id}
               className="p-4 cursor-pointer hover:border-primary/50 transition-all hover:shadow-md group"
-              onClick={() => handleSelectPrompt(prompt)}
+              onClick={(e) => handleSelectPrompt(e, prompt)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  handleSelectPrompt(e as any, prompt);
+                }
+              }}
             >
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-2">
