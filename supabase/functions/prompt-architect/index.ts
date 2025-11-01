@@ -616,7 +616,7 @@ Extract 2-4 datasets from the knowledge base. Make them actionable and directly 
     }
   }
 
-  // Step 5: Store the prompt
+  // Step 5: Store the prompt with metaprompting data
   console.log('Storing prompt record with score:', scores.total);
   const { data: promptRecord, error: storeError } = await supabaseClient
     .from('prompt_records')
@@ -628,7 +628,9 @@ Extract 2-4 datasets from the knowledge base. Make them actionable and directly 
         historical_prompts: (historicalPrompts || []).map((p: any) => p.id),
         kb_chunks: (kbChunks || []).map((c: any) => c.id),
         kb_sources_used: kbChunks?.length || 0,
-        historical_used: historicalPrompts?.length || 0
+        historical_used: historicalPrompts?.length || 0,
+        datasets: finalMetaPrompt.datasets || [],
+        usage_instructions: finalMetaPrompt.usage_instructions || ''
       },
       scores: scores,
       total_score: scores.total,
@@ -652,14 +654,17 @@ Extract 2-4 datasets from the knowledge base. Make them actionable and directly 
       .eq('session_id', sessionId);
   }
 
-  console.log('Generation complete - returning response');
+  console.log('Generation complete - returning response with metaprompting data');
   return new Response(
     JSON.stringify({
       type: 'generated',
       prompt: finalPrompt,
+      final_prompt: finalPrompt,
       scores,
       id: promptRecord?.id,
       collected,
+      datasets: finalMetaPrompt.datasets || [],
+      usage_instructions: finalMetaPrompt.usage_instructions || '',
       references: {
         historical_count: historicalPrompts?.length || 0,
         kb_count: kbChunks?.length || 0,

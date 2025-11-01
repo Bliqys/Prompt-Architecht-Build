@@ -60,12 +60,15 @@ export const PromptHistory = ({ userId }: PromptHistoryProps) => {
     e.preventDefault();
     e.stopPropagation();
     
+    // Extract metadata fields
+    const metadata = prompt.metadata || {};
+    
     const promptData = {
       final_prompt: prompt.synthesized_prompt || prompt.prompt_text,
       prompt: prompt.synthesized_prompt || prompt.prompt_text,
       scores: prompt.scores,
-      datasets: prompt.datasets,
-      usage_instructions: prompt.usage_instructions,
+      datasets: metadata.datasets || [],
+      usage_instructions: metadata.usage_instructions || '',
     };
     
     localStorage.setItem('latestPrompt', JSON.stringify(promptData));
