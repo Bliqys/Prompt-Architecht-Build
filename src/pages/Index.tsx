@@ -76,63 +76,68 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Premium Header */}
-      <header className="sticky top-0 z-50 w-full border-b border-border/40 glass backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-6 lg:px-8">
-          <div className="flex h-20 items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg shadow-primary/20">
-                <Sparkles className="w-6 h-6 text-primary-foreground" />
+      {/* Clean iOS-style header */}
+      <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-xl">
+        <div className="container mx-auto px-4 lg:px-6">
+          <div className="flex h-16 items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-primary-foreground" />
               </div>
-              <div>
-                <h1 className="text-2xl font-semibold tracking-tight">
+              <div className="hidden sm:block">
+                <h1 className="text-lg font-semibold tracking-tight">
                   Prompt Architect
                 </h1>
-                <p className="text-sm text-muted-foreground">Enterprise Prompt Engineering</p>
               </div>
             </div>
             <Button 
               variant="ghost" 
               onClick={handleSignOut}
-              className="gap-2"
+              className="gap-2 tap-feedback"
             >
               <LogOut className="w-4 h-4" />
-              Sign Out
+              <span className="hidden sm:inline">Sign Out</span>
             </Button>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-6 lg:px-8 py-12">
-        <div className="grid gap-8 lg:grid-cols-3">
+      <main className="container mx-auto px-4 lg:px-6 py-6 lg:py-8">
+        <div className="grid gap-6 lg:grid-cols-[1fr_360px] xl:grid-cols-[1fr_400px]">
           {/* Left Column - Main Interface */}
-          <div className="lg:col-span-2 space-y-8">
-            <Card className="glass elevated-xl border-border/50 animate-fade-in">
+          <div className="space-y-6">
+            {/* Primary Card */}
+            <Card className="overflow-hidden border-border/50 elevated-sm">
               <CardHeader className="pb-4">
-                <CardTitle className="text-3xl font-semibold tracking-tight flex items-center gap-3">
-                  <Zap className="w-7 h-7 text-primary" />
-                  Create Prompt
-                </CardTitle>
-                <CardDescription className="text-base">
-                  Our AI interviews you, retrieves proven patterns, synthesizes production-ready prompts, 
-                  and grades them against enterprise standards
-                </CardDescription>
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Zap className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-xl font-semibold tracking-tight mb-1">
+                      Create Prompt
+                    </CardTitle>
+                    <CardDescription className="text-sm leading-relaxed">
+                      AI interviews you, retrieves proven patterns, and synthesizes production-ready prompts
+                    </CardDescription>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pb-6">
                 <Tabs defaultValue="create" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 p-1 bg-muted/30">
-                    <TabsTrigger value="create" className="data-[state=active]:bg-background">
+                  <TabsList className="grid w-full grid-cols-2 p-1 bg-muted/50">
+                    <TabsTrigger value="create" className="tap-feedback">
                       Create
                     </TabsTrigger>
-                    <TabsTrigger value="result" className="data-[state=active]:bg-background">
+                    <TabsTrigger value="result" className="tap-feedback">
                       Result
                     </TabsTrigger>
                   </TabsList>
-                  <TabsContent value="create" className="mt-8">
+                  <TabsContent value="create" className="mt-6">
                     <InterviewWizard userId={user.id} />
                   </TabsContent>
-                  <TabsContent value="result" className="mt-8">
+                  <TabsContent value="result" className="mt-6">
                     <PromptDisplay />
                   </TabsContent>
                 </Tabs>
@@ -143,63 +148,70 @@ const Index = () => {
             {projectId && <KnowledgeBase projectId={projectId} />}
           </div>
 
-          {/* Right Column - History & Features */}
-          <div className="lg:col-span-1 space-y-8">
-            <Card className="glass elevated animate-fade-in border-border/50">
-              <CardHeader>
-                <CardTitle className="text-xl font-semibold flex items-center gap-2">
-                  <History className="w-5 h-5 text-primary" />
-                  Library
-                </CardTitle>
-                <CardDescription>
-                  Your best prompts
-                </CardDescription>
+          {/* Right Column - Compact sidebar */}
+          <div className="space-y-6">
+            {/* Library */}
+            <Card className="overflow-hidden border-border/50 elevated-sm">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <History className="w-4 h-4 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base font-semibold">
+                      Library
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Your best prompts
+                    </CardDescription>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pb-4">
                 <PromptHistory userId={user.id} />
               </CardContent>
             </Card>
 
-            {/* Feature Cards */}
-            <div className="space-y-4">
-              <Card className="glass elevated-sm animate-slide-up border-border/50">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+            {/* Feature Cards - Compact */}
+            <div className="space-y-3">
+              <Card className="border-border/50 elevated-xs hover-lift transition-all">
+                <CardHeader className="pb-2 pt-4 px-4">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
                     <Database className="w-4 h-4 text-primary" />
                     RAG-Powered
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    Retrieves your best historical prompts and knowledge base patterns to inform synthesis
+                <CardContent className="px-4 pb-4">
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Retrieves historical prompts and knowledge base patterns to inform synthesis
                   </p>
                 </CardContent>
               </Card>
 
-              <Card className="glass elevated-sm animate-slide-up border-border/50" style={{ animationDelay: '0.1s' }}>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Card className="border-border/50 elevated-xs hover-lift transition-all">
+                <CardHeader className="pb-2 pt-4 px-4">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-primary" />
                     Self-Grading
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    Every prompt is scored on Clarity, Completeness, Determinism, and Safety before delivery
+                <CardContent className="px-4 pb-4">
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Every prompt scored on Clarity, Completeness, Determinism, and Safety
                   </p>
                 </CardContent>
               </Card>
 
-              <Card className="glass elevated-sm animate-slide-up border-border/50" style={{ animationDelay: '0.2s' }}>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Card className="border-border/50 elevated-xs hover-lift transition-all">
+                <CardHeader className="pb-2 pt-4 px-4">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
                     <Zap className="w-4 h-4 text-primary" />
                     Enterprise Structure
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    Production-ready prompts with consistent ROLE → OBJECTIVE → CONTEXT → EXECUTE skeleton
+                <CardContent className="px-4 pb-4">
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Production-ready with ROLE → OBJECTIVE → CONTEXT → EXECUTE skeleton
                   </p>
                 </CardContent>
               </Card>

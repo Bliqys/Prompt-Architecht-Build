@@ -2,106 +2,106 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* iOS-Inspired Design System */
 
 @layer base {
   :root {
-    /* Apple-inspired neutral palette */
-    --background: 0 0% 99%;
-    --foreground: 240 10% 3.9%;
+    /* iOS Light Mode Colors */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 13%;
 
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 0 0% 13%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
+    --popover-foreground: 0 0% 13%;
 
-    /* Premium blue accent - Apple-style */
-    --primary: 217 91% 60%;
+    /* iOS Blue - SF Symbols Blue */
+    --primary: 211 100% 50%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
+    --secondary: 210 17% 95%;
+    --secondary-foreground: 0 0% 13%;
 
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
+    --muted: 210 17% 95%;
+    --muted-foreground: 0 0% 45%;
 
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --accent: 210 17% 95%;
+    --accent-foreground: 0 0% 13%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 217 91% 60%;
+    --border: 214 20% 90%;
+    --input: 214 20% 90%;
+    --ring: 211 100% 50%;
 
-    --radius: 0.75rem;
+    --radius: 12px;
 
-    /* Apple-style shadows and effects */
-    --shadow-sm: 0 1px 2px 0 hsl(240 5.9% 10% / 0.05);
-    --shadow-md: 0 4px 6px -1px hsl(240 5.9% 10% / 0.1);
-    --shadow-lg: 0 10px 15px -3px hsl(240 5.9% 10% / 0.1);
-    --shadow-xl: 0 20px 25px -5px hsl(240 5.9% 10% / 0.1);
-    
-    --blur-sm: blur(4px);
-    --blur-md: blur(8px);
-    --blur-lg: blur(16px);
+    /* iOS-style shadows */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+    --shadow-xl: 0 12px 40px rgba(0, 0, 0, 0.16);
+
+    /* Blur values for frosted glass */
+    --blur-light: 20px;
+    --blur-heavy: 40px;
 
     --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-foreground: 0 0% 13%;
+    --sidebar-primary: 211 100% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 17% 95%;
+    --sidebar-accent-foreground: 0 0% 13%;
+    --sidebar-border: 214 20% 90%;
+    --sidebar-ring: 211 100% 50%;
   }
 
   .dark {
-    --background: 240 10% 3.9%;
+    --background: 0 0% 7%;
     --foreground: 0 0% 98%;
 
-    --card: 240 10% 5%;
+    --card: 0 0% 11%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 240 10% 5%;
+    --popover: 0 0% 11%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 217 91% 60%;
+    --primary: 211 100% 50%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 3.7% 15.9%;
+    --secondary: 0 0% 15%;
     --secondary-foreground: 0 0% 98%;
 
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
 
-    --accent: 240 3.7% 15.9%;
+    --accent: 0 0% 15%;
     --accent-foreground: 0 0% 98%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 217 91% 60%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 211 100% 50%;
 
-    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.3);
-    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.4);
-    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.5);
-    --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.6);
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+    --shadow-xl: 0 12px 40px rgba(0, 0, 0, 0.7);
 
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 217 91% 60%;
+    --sidebar-background: 0 0% 11%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 211 100% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 20%;
+    --sidebar-ring: 211 100% 50%;
   }
 }
 
@@ -112,61 +112,116 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Apple-style smooth scrolling */
+  /* iOS-style smooth scrolling */
   html {
     scroll-behavior: smooth;
   }
 
-  /* Apple-style focus rings */
+  /* iOS focus rings */
   *:focus-visible {
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+    border-radius: 6px;
+  }
+
+  /* Selection color matching iOS blue */
+  ::selection {
+    background-color: hsl(211 100% 50% / 0.3);
   }
 }
 
 @layer utilities {
-  /* Apple-style glass effect */
-  .glass {
-    background: hsla(0, 0%, 100%, 0.7);
-    backdrop-filter: var(--blur-lg);
-    -webkit-backdrop-filter: var(--blur-lg);
+  /* iOS-style glass/frosted effect */
+  .glass-light {
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(var(--blur-light));
+    -webkit-backdrop-filter: blur(var(--blur-light));
   }
 
-  .dark .glass {
-    background: hsla(240, 10%, 5%, 0.7);
+  .glass-heavy {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(var(--blur-heavy));
+    -webkit-backdrop-filter: blur(var(--blur-heavy));
   }
 
-  /* Apple-style elevation */
-  .elevated {
-    box-shadow: var(--shadow-lg);
+  .dark .glass-light {
+    background: rgba(28, 28, 30, 0.72);
+  }
+
+  .dark .glass-heavy {
+    background: rgba(28, 28, 30, 0.85);
+  }
+
+  /* iOS-style elevation */
+  .elevated-xs {
+    box-shadow: var(--shadow-xs);
   }
 
   .elevated-sm {
     box-shadow: var(--shadow-sm);
   }
 
+  .elevated {
+    box-shadow: var(--shadow-md);
+  }
+
+  .elevated-lg {
+    box-shadow: var(--shadow-lg);
+  }
+
   .elevated-xl {
     box-shadow: var(--shadow-xl);
   }
 
-  /* Premium animations */
-  .animate-fade-in {
-    animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  /* iOS-style animations - spring physics */
+  .spring-bounce {
+    animation-timing-function: cubic-bezier(0.68, -0.55, 0.265, 1.55);
   }
 
-  .animate-slide-up {
-    animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  .spring-smooth {
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Smooth fade in */
+  .animate-fade-in {
+    animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   @keyframes fadeIn {
     from {
       opacity: 0;
+      transform: translateY(8px);
     }
     to {
       opacity: 1;
+      transform: translateY(0);
     }
+  }
+
+  /* Smooth scale in */
+  .animate-scale-in {
+    animation: scaleIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* Slide up iOS-style */
+  .animate-slide-up {
+    animation: slideUp 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   @keyframes slideUp {
@@ -179,4 +234,61 @@ All colors MUST be HSL.
       transform: translateY(0);
     }
   }
+
+  /* Pulse for loading states */
+  .animate-pulse-soft {
+    animation: pulseSoft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes pulseSoft {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.6;
+    }
+  }
+
+  /* iOS-style tap feedback */
+  .tap-feedback {
+    transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .tap-feedback:active {
+    transform: scale(0.97);
+  }
+
+  /* Smooth hover scale */
+  .hover-lift {
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-2px);
+  }
+}
+
+/* Custom scrollbar - iOS-inspired */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.3);
+}
+
+/* iOS-style input placeholder */
+input::placeholder,
+textarea::placeholder {
+  color: hsl(var(--muted-foreground) / 0.5);
 }
