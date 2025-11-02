@@ -64,6 +64,31 @@ export const KnowledgeBase = ({ projectId }: KnowledgeBaseProps) => {
     fetchKBData();
   }, [projectId, uploading, deleting]);
 
+  const parseStructuredData = (text: string, fileType: string): string => {
+    try {
+      if (fileType === 'application/json' || text.trim().startsWith('{') || text.trim().startsWith('[')) {
+        const parsed = JSON.parse(text);
+        return JSON.stringify(parsed, null, 2);
+      }
+      
+      if (fileType === 'text/xml' || fileType === 'application/xml' || text.trim().startsWith('<?xml') || text.trim().startsWith('<')) {
+        // For XML, preserve the structure but make it more readable
+        return text.replace(/></g, '>\n<');
+      }
+      
+      if (fileType === 'text/csv' || text.includes(',')) {
+        // CSV: Convert to readable format
+        const lines = text.split('\n');
+        return lines.map(line => line.trim()).filter(line => line).join('\n');
+      }
+      
+      return text;
+    } catch (error) {
+      console.warn('Error parsing structured data:', error);
+      return text;
+    }
+  };
+
   const chunkText = (text: string, chunkSize = 1000): string[] => {
     const chunks: string[] = [];
     const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
@@ -103,8 +128,9 @@ export const KnowledgeBase = ({ projectId }: KnowledgeBaseProps) => {
 
       // First pass: count total chunks
       for (const file of files) {
-        const text = await file.text();
-        const chunks = chunkText(text, 1000);
+        const rawText = await file.text();
+        const parsedText = parseStructuredData(rawText, file.type);
+        const chunks = chunkText(parsedText, 1000);
         totalChunks += chunks.length;
       }
 
@@ -112,8 +138,9 @@ export const KnowledgeBase = ({ projectId }: KnowledgeBaseProps) => {
 
       // Second pass: upload chunks with embeddings
       for (const file of files) {
-        const text = await file.text();
-        const chunks = chunkText(text, 1000);
+        const rawText = await file.text();
+        const parsedText = parseStructuredData(rawText, file.type);
+        const chunks = chunkText(parsedText, 1000);
         
         console.log(`Processing file: ${file.name} (${chunks.length} chunks)`);
 
@@ -232,13 +259,13 @@ export const KnowledgeBase = ({ projectId }: KnowledgeBaseProps) => {
               <div className="border-2 border-dashed border-border rounded-xl p-12 text-center hover:border-primary/50 transition-colors">
                 <Upload className="w-10 h-10 mx-auto mb-4 text-muted-foreground" />
                 <p className="text-sm font-medium mb-1">Click to upload datasets</p>
-                <p className="text-xs text-muted-foreground">TXT, JSON, CSV, MD files supported</p>
+                <p className="text-xs text-muted-foreground">JSON, XML, CSV, TXT, MD, YAML supported</p>
               </div>
               <input
                 id="file-upload"
                 type="file"
                 multiple
-                accept=".txt,.json,.csv,.md"
+                accept=".txt,.json,.csv,.md,.xml,.yaml,.yml,.jsonl"
                 onChange={handleFileSelect}
                 className="hidden"
               />
